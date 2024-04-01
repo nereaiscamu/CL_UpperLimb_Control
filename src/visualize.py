@@ -167,3 +167,22 @@ def visualize_angles(df, var = 'angles', angle_names = ['Shoulder', 'Elbow', 'Wr
     plt.tight_layout()
 
     plt.show()
+
+def plot_losses(train_losses, val_losses):
+    """
+    Plot training and validation losses over epochs.
+
+    Args:
+    - train_losses (numpy array): Array containing training losses for each epoch.
+    - val_losses (numpy array): Array containing validation losses for each epoch.
+    """
+    epochs = len(train_losses)
+    plt.figure(figsize=(10, 6))
+    plt.plot(range(epochs), train_losses, label='Training Loss')
+    plt.plot(range(epochs), val_losses, label='Validation Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.title('Training and Validation Losses Over Epochs')
+    plt.legend()
+    plt.grid(True)
+    plt.show()

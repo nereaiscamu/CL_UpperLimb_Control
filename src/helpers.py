@@ -17,6 +17,27 @@ from pyaldata import *
 
 
 
+def clean_0d_array_fields_NC(df):
+    """
+    Loading v7.3 MAT files, sometimes scalers are stored as 0-dimensional arrays for some reason.
+    This converts those back to scalars.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        data in trial_data format
+
+    Returns
+    -------
+    a copy of df with the relevant fields changed
+    """
+    for c in df.columns:
+        if isinstance(df[c].values.all, np.ndarray) and all([arr.ndim == 0 for arr in df[c]]):
+            df[c] = [arr.item() for arr in df[c]]
+
+    return df
+
+
 def mat2dataframe_NC(fname, shift_idx_fields=True, td_name = 'td_name'):
     try:
         mat = scipy.io.loadmat(fname, simplify_cells=True)
@@ -43,7 +64,7 @@ def mat2dataframe_NC(fname, shift_idx_fields=True, td_name = 'td_name'):
 
     # Apply the function to all columns of the DataFrame
     df = df.map(replace_empty_list)
-    df= data_cleaning.clean_0d_array_fields(df)
+    df= clean_0d_array_fields_NC(df) #changed from the function in pyaldata to avoid errors when some rows were arrays and other were not.
     df = data_cleaning.clean_integer_fields(df)
     
     if shift_idx_fields:
@@ -74,18 +95,44 @@ def add_bad_idx(end_list, bad_list):
     """
 
 
-    if isinstance(bad_list, int) and bad_list == -1:
+    if (isinstance(bad_list, int) or isinstance(bad_list, np.integer)) and bad_list == -1:
+
         pass
-    elif isinstance(bad_list, int) and bad_list>-1:
-        end_list = list(end_list)
-        end_list.append(bad_list) 
-        end_list.sort()
+
+    elif (isinstance(bad_list, int) or isinstance(bad_list, np.integer)) and bad_list>-1:
+        
+        if (isinstance(end_list, int) or isinstance(end_list, np.integer)) and end_list>-1:
+    
+                end_list_ = []
+                end_list_.append(end_list)
+                end_list_.append(bad_list)
+                end_list_.sort()
+                end_list = end_list_
+
+        else:
+   
+            end_list = list(end_list)
+            end_list.append(bad_list)
+            end_list.sort()
+
     else:
-        end_list = list(end_list)
-        end_list.extend(bad_list)
-        end_list.sort()
+        
+            if (isinstance(end_list, int) or isinstance(end_list, np.integer))and end_list>-1:
+         
+                end_list_ = []
+                end_list_.append(end_list)
+                end_list_.extend(bad_list)
+                end_list_.sort()
+                end_list = end_list_
+
+            else:
+            
+                end_list = list(end_list)
+                end_list.extend(bad_list)
+                end_list.sort()
 
     return end_list
+
 
 
 
@@ -235,7 +282,8 @@ def build_tidy_df(df, start_margin = 10, end_margin = 10,ref_field = None):
             
             win_df.loc[it, t] = [col]
 
-    cols_to_keep = ['index', 'num', 'type', 'KUKAPos']
+    cols_to_search = ['index', 'num', 'type', 'KUKAPos']
+    cols_to_keep = [c for c in cols_to_search if c in df.columns]
 
     for col in cols_to_keep:
         win_df[col] = df[col]
@@ -248,7 +296,7 @@ def build_tidy_df(df, start_margin = 10, end_margin = 10,ref_field = None):
                 row = {
                      'num': win_df['num'][trial_num],
                     'type': win_df['type'][trial_num],
-                    'KUKAPos': win_df['KUKAPos'][trial_num][reach_num],
+                    #'KUKAPos': win_df['KUKAPos'][trial_num][reach_num], --> check if I need it, only in some data
                     'trial_num': trial_num,
                     'reach_num': reach_num,
                     'time_sample': timestamp,
@@ -321,14 +369,19 @@ def train_test_split(df, target_variable = 'x', num_folds = 5):
     val_ids = [[] for _ in range(num_folds)]  # Create empty lists for each fold
     test_ids = [[] for _ in range(num_folds)]  # Create empty lists for each fold
 
+    num_test = max(int(np.round(0.2*len(trial_ids))),1)
+    num_val = max(int(np.round(0.2*(len(trial_ids)-num_test))),1)
+    print('Test trials ', num_test)
+    print('Val trials', num_val)
     
+        
     for i in range(num_folds):
         random.shuffle(trial_ids)
-        train_ids[i].extend(trial_ids[:-2])
-        val_ids[i].extend(trial_ids[-2:-1])
-        test_ids[i].extend(trial_ids[-1:])
-
-
+        test_ids[i].extend(trial_ids[-num_test:])
+        remaining_ids = [j for j in trial_ids if j not in test_ids[i]]
+        train_ids[i].extend(remaining_ids[:-num_val])
+        val_ids[i].extend(trial_ids[-num_val:])
+        
     X_train = {}
     y_train = {}
     X_test = {}
@@ -339,6 +392,9 @@ def train_test_split(df, target_variable = 'x', num_folds = 5):
     info_val = {}
     info_test = {}
 
+    cols_search = [ 'id','num', 'type', 'KUKAPos', 'trial_num', 'reach_num']
+    info_cols = [c for c in cols_search if c in df.columns]
+
     for fold_idx in range(num_folds):
         print('fold',fold_idx, ' train_ids ',train_ids[fold_idx])
         print('fold',fold_idx, ' val_ids ',val_ids[fold_idx])
@@ -348,13 +404,13 @@ def train_test_split(df, target_variable = 'x', num_folds = 5):
         df_val = df.loc[df['id'].isin(val_ids[fold_idx])]
         df_test = df.loc[df['id'].isin(test_ids[fold_idx])]
 
-        train_info = df_train[[ 'id','num', 'type', 'KUKAPos', 'trial_num', 'reach_num']]
+        train_info = df_train[info_cols]
         X_train_ = np.stack(df_train['both_rates'], axis = 0)
         y_train_ = np.array(df_train[target_variable].tolist())
-        val_info = df_val[['id','num', 'type', 'KUKAPos', 'trial_num', 'reach_num']]
+        val_info = df_val[info_cols]
         X_val_ =  np.stack(df_val['both_rates'], axis = 0)
         y_val_ =  np.array(df_val[target_variable].tolist())
-        test_info = df_test[['id','num', 'type', 'KUKAPos', 'trial_num', 'reach_num']]
+        test_info = df_test[info_cols]
         X_test_ =  np.stack(df_test['both_rates'], axis = 0)
         y_test_ =  np.array(df_test[target_variable].tolist())
 
@@ -376,3 +432,35 @@ def train_test_split(df, target_variable = 'x', num_folds = 5):
         info_test['fold'+str(fold_idx)] = test_info
 
     return X_train, y_train, X_val, y_val, X_test, y_test, info_train, info_val, info_test
+
+
+from collections import Counter
+
+def calculate_mode(data):
+    """
+    Calculate the mode of a dataset.
+
+    Args:
+    - data (list or numpy array): The input dataset.
+
+    Returns:
+    - mode: The mode(s) of the dataset.
+    """
+    # Use Counter to count occurrences of each value
+    data = np.round(data, 3)
+    counts = Counter(data)
+
+    # Get the maximum count
+    max_count = max(counts.values())
+
+    # Find all values with the maximum count (could be multiple modes)
+    modes = [value for value, count in counts.items() if count == max_count]
+
+    return modes
+
+
+
+
+
+    
+
