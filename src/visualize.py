@@ -54,7 +54,7 @@ def visualize_traj(df, pos_vars, marker_names):
             
             mean_trajectories = []  # Initialize list to store mean trajectories
             
-            for idx, t in enumerate(df[pos_var]):
+            for idx, t in enumerate(df[pos_var][:2]):
                 color = f'C{idx}'  # Use a unique color for each trial
                 label = f'{pos_var.upper()} Marker {marker} Trial {idx}'
                 mean_trajectory = None  # Initialize mean trajectory
@@ -127,7 +127,7 @@ def visualize_angles(df, var = 'angles', angle_names = ['Shoulder', 'Elbow', 'Wr
 
         mean_trajectories = []  # Initialize list to store mean trajectories
 
-        for idx, t in enumerate(df[var]):
+        for idx, t in enumerate(df[var][:2]):
 
             color = f'C{idx}'  # Use a unique color for each trial
             label = f'{var} angle {angle} Trial {idx}'
@@ -185,4 +185,63 @@ def plot_losses(train_losses, val_losses):
     plt.title('Training and Validation Losses Over Epochs')
     plt.legend()
     plt.grid(True)
+    plt.show()
+
+
+def visualize_LSTM_test(y_hat, y_true, seq_length):
+
+    y_hat = y_hat.reshape(y_hat.shape[0] // seq_length, seq_length, y_hat.shape[1])  
+    y_true = y_true.reshape(y_true.shape[0] // seq_length, seq_length, y_true.shape[1])  
+    
+    num_trials = y_hat.shape[0]
+    # Define time vector (assuming each sample represents 20ms)
+    trial_len = y_true.shape[1]
+    time_vector = np.arange(0, trial_len * 0.02, 0.02)  # Time vector in seconds
+
+    # Create a figure and axis objects
+    fig, ax = plt.subplots(nrows=3, ncols=5, sharey='row', figsize=[4*5, 10])
+
+    # Plot the signals with vertical spacing
+    spacing = 0.5  # Adjust the spacing value as desired
+
+    # Define a list of colors
+    colors = ['g', 'b', 'orange']
+
+    # Plot each variable (x, y, z) in separate rows
+    for j in range(num_trials)[:5]:
+        data = y_true[j]
+        pred_data = y_hat[j]
+        
+        # Plot x variable
+        ax[0, j].plot(time_vector, data[:, 0], c=colors[0], label='True')
+        ax[0, j].plot(time_vector, pred_data[:, 0], c=colors[0], alpha=0.5, linestyle='--', label='Predicted')
+        ax[0, j].set_title('Trial {}'.format(j+1), fontsize='xx-large')
+        ax[0, j].spines[['right', 'top', 'left']].set_visible(False)
+        
+        # Plot y variable
+        ax[1, j].plot(time_vector, data[:, 1], c=colors[1])
+        ax[1, j].plot(time_vector, pred_data[:, 1], c=colors[1], alpha=0.5, linestyle='--')
+        ax[1, j].spines[['right', 'top', 'left']].set_visible(False)
+        
+        # Plot z variable
+        ax[2, j].plot(time_vector, data[:, 2], c=colors[2])
+        ax[2, j].plot(time_vector, pred_data[:, 2], c=colors[2], alpha=0.5, linestyle='--')
+        ax[2, j].set_xlabel('Time (seconds)')
+        ax[2, j].spines[['right', 'top', 'left']].set_visible(False)
+
+    # Set y-label only for the first column
+    fig.text(0.075, 0.78, 'X Position', va='center', rotation='vertical', fontsize = 16)
+    fig.text(0.075, 0.5, 'Y Position', va='center', rotation='vertical', fontsize = 16)
+    fig.text(0.075, 0.23, 'Z Position', va='center', rotation='vertical', fontsize = 16)
+
+
+    # Create a common legend for all subplots
+    handles, labels = ax[0, 0].get_legend_handles_labels()
+    legend = fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, 0.0), ncol=2, fontsize='large')
+    for line in legend.get_lines():
+        line.set_color('k')  # Set legend line color to red
+
+    plt.subplots_adjust(hspace=0.5)
+
+    # Show the plot
     plt.show()

@@ -112,6 +112,12 @@ def mean_squared_loss(y_true, y_pred):
 
     return mse
 
+def huber_loss(X, y, delta=8):
+    residual = torch.abs(X - y)
+    condition = residual < delta
+    loss = torch.where(condition, 0.5 * residual**2, delta * residual - 0.5 * delta**2)
+    return loss.mean()
+
 
 
 def reshape_to_eval(x,y, model):
@@ -136,8 +142,6 @@ def eval_model(xx_train, yy_train, xx_val, yy_val, xx_test, yy_test, model, metr
     y_true_train, y_pred_train = reshape_to_eval(xx_train,yy_train, model)
     y_true_val, y_pred_val = reshape_to_eval(xx_val,yy_val, model)
     y_true_test, y_pred_test = reshape_to_eval(xx_test,yy_test, model)
-
-
 
     if metric == 'rmse':
         # calculate root mean squared error
