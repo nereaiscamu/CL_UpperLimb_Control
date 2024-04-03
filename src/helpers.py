@@ -341,7 +341,8 @@ def min_max_normalize(vector):
 
     return norm_vec
 
-def train_test_split(df, target_variable = 'x', num_folds = 5):
+def train_test_split(df, train_variable = 'both_rates', 
+                     target_variable = 'x', num_folds = 5):
 
     """ This function creates disctionnaries to organize the data to perform 
     cross-fold validation. 
@@ -380,7 +381,7 @@ def train_test_split(df, target_variable = 'x', num_folds = 5):
         test_ids[i].extend(trial_ids[-num_test:])
         remaining_ids = [j for j in trial_ids if j not in test_ids[i]]
         train_ids[i].extend(remaining_ids[:-num_val])
-        val_ids[i].extend(trial_ids[-num_val:])
+        val_ids[i].extend(remaining_ids[-num_val:])
         
     X_train = {}
     y_train = {}
@@ -405,13 +406,13 @@ def train_test_split(df, target_variable = 'x', num_folds = 5):
         df_test = df.loc[df['id'].isin(test_ids[fold_idx])]
 
         train_info = df_train[info_cols]
-        X_train_ = np.stack(df_train['both_rates'], axis = 0)
+        X_train_ = np.stack(df_train[train_variable], axis = 0)
         y_train_ = np.array(df_train[target_variable].tolist())
         val_info = df_val[info_cols]
-        X_val_ =  np.stack(df_val['both_rates'], axis = 0)
+        X_val_ =  np.stack(df_val[train_variable], axis = 0)
         y_val_ =  np.array(df_val[target_variable].tolist())
         test_info = df_test[info_cols]
-        X_test_ =  np.stack(df_test['both_rates'], axis = 0)
+        X_test_ =  np.stack(df_test[train_variable], axis = 0)
         y_test_ =  np.array(df_test[target_variable].tolist())
 
         scaler = StandardScaler().fit(X_train_)
