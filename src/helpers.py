@@ -397,9 +397,9 @@ def train_test_split(df, train_variable = 'both_rates',
     info_cols = [c for c in cols_search if c in df.columns]
 
     for fold_idx in range(num_folds):
-        print('fold',fold_idx, ' train_ids ',train_ids[fold_idx])
-        print('fold',fold_idx, ' val_ids ',val_ids[fold_idx])
-        print('fold',fold_idx, ' test_ids ',test_ids[fold_idx])
+        #print('fold',fold_idx, ' train_ids ',train_ids[fold_idx])
+        #print('fold',fold_idx, ' val_ids ',val_ids[fold_idx])
+        #print('fold',fold_idx, ' test_ids ',test_ids[fold_idx])
 
         df_train = df.loc[df['id'].isin(train_ids[fold_idx])]
         df_val = df.loc[df['id'].isin(val_ids[fold_idx])]

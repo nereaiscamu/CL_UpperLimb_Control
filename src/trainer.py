@@ -148,9 +148,9 @@ def eval_model(xx_train, yy_train, xx_val, yy_val, xx_test, yy_test, model, metr
         trainScore = math.sqrt(mean_squared_error(y_true_train, y_pred_train))
         print('Train Score: %.2f RMSE' % (trainScore))
         valScore = math.sqrt(mean_squared_error(y_true_val, y_pred_val))
-        print('Train Score: %.2f RMSE' % (valScore))
+        print('Val Score: %.2f RMSE' % (valScore))
         testScore = math.sqrt(mean_squared_error(y_true_test, y_pred_test))
-        print('Train Score: %.2f RMSE' % (testScore))
+        print('Test Score: %.2f RMSE' % (testScore))
 
         return y_pred_test, y_true_test,trainScore, valScore, testScore
     
@@ -159,7 +159,9 @@ def eval_model(xx_train, yy_train, xx_val, yy_val, xx_test, yy_test, model, metr
         ev_train = explained_variance_score(y_true_train, y_pred_train)
         ev_val = explained_variance_score(y_true_val, y_pred_val)
         ev_test = explained_variance_score(y_true_test, y_pred_test)
-
+        print('Train EV: %.2f ' % (ev_train))
+        print('Val EV: %.2f ' % (ev_val))
+        print('Test EV: %.2f ' % (ev_test))
         return y_pred_test, y_true_test, ev_train, ev_val, ev_test
     
 
@@ -167,15 +169,20 @@ def eval_model(xx_train, yy_train, xx_val, yy_val, xx_test, yy_test, model, metr
 def train_model(model, X,Y,
                 X_val, 
                 Y_val,
-                objective,
-                regularizer=None,
-                num_epochs=1000, 
                 lr=0.0001,
-                early_stop = 5,
                 lr_step_size=10,
+                lr_gamma=0.9,
+                sequence_length_LSTM=10,
                 batch_size_train = 3,
                 batch_size_val = 3,
-                lr_gamma=0.9):
+                num_epochs=1000, 
+                delta = 8,                 
+                regularizer=None,
+                l1_ratio = 0.5,
+                alpha = 1e-5,     
+                early_stop = 5,
+                
+                ):
 
     # Set up the optimizer with the specified learning rate
     optimizer = optim.Adam(model.parameters(), lr=lr)
@@ -184,6 +191,8 @@ def train_model(model, X,Y,
     scheduler = lr_scheduler.StepLR(optimizer, 
                                     step_size=lr_step_size, 
                                     gamma=lr_gamma)
+    
+    
         
     # Keep track of the best model's parameters and loss
     best_model_wts = deepcopy(model.state_dict())
@@ -201,10 +210,10 @@ def train_model(model, X,Y,
     
     # Reshape data for the LSTM
     train_dataset = SequenceDataset(
-    Y,    X,    sequence_length=10)
+    Y,    X,    sequence_length=sequence_length_LSTM)
 
     val_dataset = SequenceDataset(
-    Y_val,    X_val,    sequence_length=10)
+    Y_val,    X_val,    sequence_length=sequence_length_LSTM)
     loader_train = data.DataLoader(train_dataset, batch_size=batch_size_train, shuffle=True)
     loader_val = data.DataLoader(val_dataset, batch_size=batch_size_val, shuffle=True)
 
@@ -235,11 +244,11 @@ def train_model(model, X,Y,
                         output_t = torch.squeeze(output_t)
 
 
-                        loss_t = objective(output_t, y_)
+                        loss_t = huber_loss(output_t, y_, delta = delta)
                         
                         # Add regularization to the loss in the training phase
                         if regularizer is not None:
-                            loss_t += regularizer
+                            loss_t += regularizer(model, l1_ratio, alpha)
                         # Compute gradients and perform an optimization step
                         loss_t.backward()
                         optimizer.step()
@@ -248,7 +257,7 @@ def train_model(model, X,Y,
                     output_t = model(X_)
                     output_t = torch.squeeze(output_t)
 
-                    loss_t = objective(output_t, y_)
+                    loss_t = huber_loss(output_t, y_, delta = delta)
 
                 # Ensure the loss is finite
                 assert torch.isfinite(loss_t)

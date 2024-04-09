@@ -1,9 +1,19 @@
+import os
 import numpy as np
+import pandas as pd
+import xarray as xr
 
 from sklearn.metrics import *
 from copy import deepcopy
 import matplotlib.pyplot as plt
 import math
+
+
+from tqdm.auto import tqdm
+import seaborn as sns
+
+from src.helpers import *
+from src.visualize import *
 
 import torch
 import torch.nn as nn
@@ -12,203 +22,95 @@ import torch.optim as optim
 from torch.optim import lr_scheduler
 import torch.utils.data as data
 from torch.utils.data import Dataset
+import pickle
 
 import optuna
+from src.optuna_functions import * 
 
 
 device = torch.device('cpu') #suposed to be cuda
 dtype = torch.float32
 
+import sys
+sys.path.append("c:\\Users\\nerea\\OneDrive\\Documentos\\EPFL_MASTER\\PDM\\Project\\PyalData")
+# to change for the actual path where PyalData has been cloned
 
 
-class CausalTemporalLSTM_Optuna(nn.Module):
-    def __init__(self, trial, num_features=124, 
-                    out_dims = 6):
-        super(CausalTemporalLSTM_Optuna, self).__init__()
-        self.num_features = num_features
-        self.hidden_units = trial.suggest_int("n_hidden_units", 1,24)
-        self.num_layers = trial.suggest_int("num_layers", 1,64)
-        self.input_size = trial.suggest_int('input_size_LSTM', 10, self.num_features)
+path_to_data = './Data/Processed_Data'
+baseline_data = os.path.join(path_to_data, 'Tidy_Sansa_11_04.pkl')
 
-        self.lstm = nn.LSTM(
-            input_size= self.input_size,
-            hidden_size=self.hidden_units,
-            batch_first=True,
-            num_layers= self.num_layers,
-            bidirectional=False,
-        )
-        self.linear1 = nn.Linear(in_features=self.num_features, out_features=self.input_size)
-        self.linear2 = nn.Linear(in_features=self.hidden_units, out_features=out_dims)
+with open(baseline_data, 'rb') as fp:
+        df_baseline = pickle.load(fp)
 
-        self.dropout1 = nn.Dropout(p= trial.suggest_float('dropout_1')) 
 
-        self.dropout2 = nn.Dropout(p= trial.suggest_float('dropout_2')) 
+X_train, y_train, X_val, y_val, X_test,\
+    y_test, info_train, info_val, info_test = \
+    train_test_split(df_baseline, train_variable = 'both_rates', \
+                     target_variable = 'target_pos', num_folds = 5)
 
-    def forward(self, x):
+# Test one of the folds first
+fold_num = 'fold0'
+fold = 0
 
-        x = self.linear1(x)
-        x = self.dropout1(x)
-        x, _ = self.lstm(x)
-        x = self.dropout2(x)
-        output = self.linear2(x)
-        
-        # Apply sigmoid activation function
-        output = torch.sigmoid(output)
-        
-        return output.squeeze()
+print('We are testing the optimization method on fold ', fold)
+
+
+X_train = X_train[fold_num]
+X_val = X_val[fold_num]
+X_test = X_test[fold_num]
+y_test = y_test[fold_num]
+y_train = y_train[fold_num]
+y_val = y_val[fold_num]
+
+
+# Specify that we want our tensors on the GPU and in float32
+device = torch.device('cpu') #suposed to be cuda
+dtype = torch.float32
+path_to_models = './Models'
+
+num_dim_output = y_train.shape[1]
+num_features = X_train.shape[1]
+
+seq_length = 75
+
+# Reshape x_train to match the number of columns in the model's input layer
+xx_train = X_train.reshape(X_train.shape[0] // seq_length, seq_length, X_train.shape[1])  
+# Reshape y_train to match the number of neurons in the model's output layer
+yy_train = y_train.reshape(y_train.shape[0] // seq_length, seq_length, y_train.shape[1])  
+
+xx_val = X_val.reshape(X_val.shape[0] // seq_length, seq_length, X_val.shape[1])  
+yy_val = y_val.reshape(y_val.shape[0] // seq_length, seq_length, y_val.shape[1])  
+
+xx_test = X_test.reshape(X_test.shape[0] // seq_length, seq_length, X_test.shape[1])  
+yy_test = y_test.reshape(y_test.shape[0] // seq_length, seq_length, y_test.shape[1])  
+
+seed = 42
+torch.manual_seed(seed)
+
+Reg = globals().get(Regularizer_LSTM)
+
+# Fit the LSTM model
+def train_model_optuna(trial):
     
+    X = xx_train
+    Y = yy_train
+    X_val = xx_val
+    Y_val = yy_val
 
+    num_epochs= 200
+    early_stop = 5
 
-def Regularizer_LSTM(model, trial):
-    """
-    Implement an L1-L2 penalty on the norm of the model weights.
-
-    model: CausalTemporalLSTM instance
-    alpha: scaling parameter for the regularization.
-    l1_ratio: mixing parameter between L1 and L2 loss.
-
-    Returns:
-    reg: regularization term
-    """
-
-    alpha = trial.suggest_float('alpha_reg', 1e-7, 1e-1, log = True)
-    l1_ratio = trial.suggest_float('l1_ratio_reg', 0.1, 0.9)
-
-    w_t = model.lstm.weight_ih_l0
-    w_l = model.linear.weight
-    w_l_1 = model.linear1.weight
-
-    l1_loss = w_t.abs().sum() + w_l.abs().sum() + w_l_1.abs().sum()
-    l2_loss = w_t.pow(2.0).sum() + w_l.pow(2.0).sum() + w_l_1.pow(2.0).sum()
-
-    reg = l1_ratio * l1_loss + (1 - l1_ratio) * l2_loss
-
-    reg = alpha * reg
-
-    return reg.item()
-
-
-
-class SequenceDataset(Dataset):
-
-    def __init__(self, y, X, trial):
-        """
-        Initializes the SequenceDataset.
-        
-        Args:
-            y (torch.Tensor): The target labels for each sequence.
-            X (torch.Tensor): The input sequences.
-            sequence_length (int): The desired length of each sequence.
-        """
-        self.sequence_length = trial.suggest_int('seq_length_LSTM', 1, 20)
-        self.y = torch.tensor(y)
-        self.X = torch.tensor(X)
-
-    def __len__(self):
-        """
-        Returns the total number of samples in the dataset.
-        """
-        return self.X.shape[0] * self.X.shape[1]
-
-    def __getitem__(self, i): 
-        """
-        Gets the i-th sample from the dataset.
-        
-        Args:
-            i (int): Index of the desired sample.
-        
-        Returns:
-            xx (torch.Tensor): Input sequence of length sequence_length.
-            yy (torch.Tensor): Corresponding target sequence.
-        """
-        trial_index = i // self.X.shape[1]
-        point_index = i % self.X.shape[1]
-        
-        if point_index > self.sequence_length - 1:
-            point_start = point_index - self.sequence_length
-            xx = self.X[trial_index, point_start:point_index, :]
-            yy = self.y[trial_index, point_start+1:point_index+1, :]
-        else:
-            padding_x = self.X[trial_index, 0:1, :].repeat(self.sequence_length - point_index, 1)
-            padding_y = self.y[trial_index, 0:1, :].repeat(self.sequence_length - point_index - 1, 1)
-            xx = self.X[trial_index, 0:point_index, :]
-            xx = torch.cat((padding_x, xx), dim=0)
-            yy = self.y[trial_index, 0:point_index + 1, :]
-            yy = torch.cat((padding_y, yy), dim=0)
-            
-        return xx, yy
-
-
-def huber_loss(X, y, trial):
-    delta = trial.suggest('huber_delta', 5, 10)
-    residual = torch.abs(X - y)
-    condition = residual < delta
-    loss = torch.where(condition, 0.5 * residual**2, delta * residual - 0.5 * delta**2)
-    return loss.mean()
-
-
-
-def reshape_to_eval(x,y, model):
-    to_t_eval =  lambda array: torch.tensor(array, device='cpu', dtype=dtype)  
-    x = to_t_eval(x) 
-    y = to_t_eval(y)
-    y_pred = model(x)
-    y_array = y.detach().cpu().numpy()
-    y_pred_array = y_pred.detach().cpu().numpy()
-
-    # Reshape tensors to 2D arrays (flatten the batch and sequence dimensions)
-    y_pred_2D = y_pred_array.reshape(-1, y_pred_array.shape[-1])
-    y_true_2D = y_array.reshape(-1, y_array.shape[-1])
+    model = CausalTemporalLSTM_Optuna(trial, num_features= num_features, 
+                out_dims = num_dim_output).to(device)
     
-    return y_true_2D, y_pred_2D
-
-
-
-def eval_model(xx_train, yy_train, xx_val, yy_val, xx_test, yy_test, model, metric = 'rmse'):
-
-    #Move tensors to cpu and reshape them for evaluation
-    y_true_train, y_pred_train = reshape_to_eval(xx_train,yy_train, model)
-    y_true_val, y_pred_val = reshape_to_eval(xx_val,yy_val, model)
-    y_true_test, y_pred_test = reshape_to_eval(xx_test,yy_test, model)
-
-    if metric == 'rmse':
-        # calculate root mean squared error
-        trainScore = math.sqrt(mean_squared_error(y_true_train, y_pred_train))
-        print('Train Score: %.2f RMSE' % (trainScore))
-        valScore = math.sqrt(mean_squared_error(y_true_val, y_pred_val))
-        print('Train Score: %.2f RMSE' % (valScore))
-        testScore = math.sqrt(mean_squared_error(y_true_test, y_pred_test))
-        print('Train Score: %.2f RMSE' % (testScore))
-
-        return y_pred_test, y_true_test,trainScore, valScore, testScore
-    
-    elif metric == 'ev':
-        #Compute explained variance
-        ev_train = explained_variance_score(y_true_train, y_pred_train)
-        ev_val = explained_variance_score(y_true_val, y_pred_val)
-        ev_test = explained_variance_score(y_true_test, y_pred_test)
-
-        return y_pred_test, y_true_test, ev_train, ev_val, ev_test
-
-
-def train_model(model, trial, X,Y,
-                X_val, 
-                Y_val,
-                objective,
-                regularizer=None,
-                num_epochs=1000, 
-                early_stop = 5,
-                batch_size_train = 3,
-                batch_size_val = 3,):
-
     # Set up the optimizer with the specified learning rate
     #optimizer = optim.Adam(model.parameters(), lr=lr)
-    optimizer_name = trial.suggest_categorical("optimizer", ['Adam', 'SGD'])
-    lr = trial.suggest_float('lr', 1e-5, 1e-1, log = True)
+    optimizer_name = 'Adam'
+    lr = trial.suggest_float('lr', 1e-4, 1e-2, log = True)
     optimizer = getattr(optim, optimizer_name)(model.parameters(), lr = lr)
 
-    lr_step_size = trial.suggest_int('lr_step_size', 5, 20)
-    lr_gamma = trial.suggest_float('lr_gamma', 0.1, 1.5)
+    lr_step_size = 10 # trial.suggest_int('lr_step_size', 5, 15)
+    lr_gamma = trial.suggest_float('lr_gamma', 0.5, 1.3)
     # Set up a learning rate scheduler
     scheduler = lr_scheduler.StepLR(optimizer, 
                                     step_size=lr_step_size, 
@@ -229,13 +131,22 @@ def train_model(model, trial, X,Y,
     end_train = 0
     
     # Reshape data for the LSTM
-    train_dataset = SequenceDataset(
-    Y,    X,    sequence_length=10)
+    seq_length_LSTM = trial.suggest_int('seq_length_LSTM', 5, 15)
+    train_dataset = SequenceDataset(Y,X,seq_length_LSTM)
+    val_dataset = SequenceDataset(Y_val,X_val,seq_length_LSTM)
 
-    val_dataset = SequenceDataset(
-    Y_val,    X_val,    sequence_length=10)
+
+    batch_size_train = trial.suggest_int('batch_size_train', 25, 75)
+    batch_size_val = trial.suggest_int('batch_size_val',25, 75)
     loader_train = data.DataLoader(train_dataset, batch_size=batch_size_train, shuffle=True)
     loader_val = data.DataLoader(val_dataset, batch_size=batch_size_val, shuffle=True)
+
+    # hyperparameter for huber loss
+    delta = 8 #trial.suggest_int('huber_delta', 5, 10)
+
+    # hyperparameter for regularizer
+    alpha = 1e-5 #trial.suggest_float('alpha_reg', 1e-7, 1e-3, log = True)
+    l1_ratio = trial.suggest_float('l1_ratio_reg', 0.3, 0.7)
 
     # Loop through epochs
     for epoch in np.arange(num_epochs):
@@ -264,11 +175,11 @@ def train_model(model, trial, X,Y,
                         output_t = torch.squeeze(output_t)
 
 
-                        loss_t = objective(output_t, y_)
+                        loss_t = huber_loss(output_t, y_, delta)
                         
                         # Add regularization to the loss in the training phase
-                        if regularizer is not None:
-                            loss_t += regularizer
+                        loss_t += Regularizer_LSTM(model, l1_ratio, alpha)
+
                         # Compute gradients and perform an optimization step
                         loss_t.backward()
                         optimizer.step()
@@ -277,7 +188,7 @@ def train_model(model, trial, X,Y,
                     output_t = model(X_)
                     output_t = torch.squeeze(output_t)
 
-                    loss_t = objective(output_t, y_)
+                    loss_t = huber_loss(output_t, y_, delta)
 
                 # Ensure the loss is finite
                 assert torch.isfinite(loss_t)
@@ -291,6 +202,7 @@ def train_model(model, trial, X,Y,
                 train_losses.append(running_loss)
             else:
                 val_losses.append(running_loss)
+                
                 # Update best model parameters if validation loss improves
                 if running_loss < best_loss:
                     best_loss = running_loss
@@ -310,48 +222,86 @@ def train_model(model, trial, X,Y,
                         
                         if end_train == 2:
                             model.load_state_dict(best_model_wts)
-                            return np.array(train_losses), np.array(val_losses)
+                            y_true_val, y_pred_val = reshape_to_eval(xx_val,yy_val, model)
+                            ev_val = explained_variance_score(y_true_val, y_pred_val)
+                            return ev_val  # here change to not return a list but a single value for the trial to analyze
+                        
 
         # Update learning rate with the scheduler
         scheduler.step()
         print("Epoch {:03} Train {:.4f} Val {:.4f}".format(epoch, train_losses[-1], val_losses[-1]))
 
+
+        y_true_val_epoch, y_pred_val_epoch = reshape_to_eval(xx_val,yy_val, model)
+        ev_val_epoch = explained_variance_score(y_true_val_epoch, y_pred_val_epoch)
+        trial.report(ev_val_epoch, epoch)
+
+        if trial.should_prune():
+            raise optuna.exceptions.TrialPruned()
+        
     # load best model weights
     model.load_state_dict(best_model_wts)
-
-    return np.array(val_losses)
-
-
-
-if __name__ is main():
     
+    y_true_val, y_pred_val = reshape_to_eval(xx_val,yy_val, model)
+    ev_val = explained_variance_score(y_true_val, y_pred_val)
 
-X_train, y_train, X_val, y_val, X_test, y_test, info_train, info_val, info_test = train_test_split(tidy_df, train_variable = 'both_rates', 
-                                                                                                   target_variable = 'target_pos', num_folds = 5)
-
-
-
+    return ev_val
 
 
 
-study = optuna.create_study(direction="maximize")
-study.optimize(objective, n_trials=100)
+def reshape_to_eval(x,y, model):
+    to_t_eval =  lambda array: torch.tensor(array, device='cpu', dtype=dtype)  
+    x = to_t_eval(x) 
+    y = to_t_eval(y)
+    y_pred = model(x)
+    y_array = y.detach().cpu().numpy()
+    y_pred_array = y_pred.detach().cpu().numpy()
 
-trial = study.best_trial
-
-print("Accuracy: {}".format(trial.value))
-print("Best hyperparameters: {}".format(trial.params))
-
-### Plotting the study
-
-# Plotting the optimization history of the study.
-
-optuna.visualization.plot_optimization_history(study)
-
-#Plotting the accuracies for each hyperparameter for each trial.
+    # Reshape tensors to 2D arrays (flatten the batch and sequence dimensions)
+    y_pred_2D = y_pred_array.reshape(-1, y_pred_array.shape[-1])
+    y_true_2D = y_array.reshape(-1, y_array.shape[-1])
     
-optuna.visualization.plot_slice(study)
+    return y_true_2D, y_pred_2D
 
-# Plotting the accuracy surface for the hyperparameters involved in the random forest model.
 
-optuna.visualization.plot_contour(study, params=["n_estimators", "max_depth"])
+
+if __name__ == "__main__":
+        study = optuna.create_study(direction="maximize")
+        study.optimize(train_model_optuna, n_trials=100)
+
+        importance_scores = optuna.importance.get_param_importances(study)
+
+        # Print importance scores
+        for param, score in importance_scores.items():
+            print(f"{param}: {score}")
+
+        pruned_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED]
+        complete_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
+
+
+
+        print('Study statistics: ')
+        print("Number of finished trials: ", len(study.trials))
+        print("Number of pruned trials: ", len(pruned_trials))
+        print("Number of complete trials: ", len(complete_trials))
+
+        print('Best trial: ')
+        trial = study.best_trial
+
+        print("Loss: {}".format(trial.value))
+        print("Best hyperparameters: {}".format(trial.params))
+
+
+        ### Plotting the study
+
+        # Plotting the optimization history of the study.
+
+        optuna.visualization.plot_optimization_history(study)
+
+        #Plotting the accuracies for each hyperparameter for each trial.
+            
+        optuna.visualization.plot_slice(study)
+
+        # Plotting the accuracy surface for the hyperparameters involved in the random forest model.
+
+        optuna.visualization.plot_contour(study, params=["num_layers", "n_hidden_units"]) 
