@@ -1,0 +1,1 @@
+{"n_hidden_units": 32, "num_layers": 5, "input_size_LSTM": 31, "dropout_1": 0.45353387311567006, "dropout_2": 0.43469775095920277, "lr": 0.0017186636685695396, "lr_gamma": 1.4869841187864843, "seq_length_LSTM": 17, "batch_size_train": 33, "batch_size_val": 34, "huber_delta": 7, "alpha_reg": 6.5952774295107e-06, "l1_ratio_reg": 0.38894691744111975}

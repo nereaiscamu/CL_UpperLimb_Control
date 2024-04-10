@@ -26,9 +26,9 @@ class CausalTemporalLSTM_Optuna(nn.Module):
                     out_dims = 6):
         super(CausalTemporalLSTM_Optuna, self).__init__()
         self.num_features = num_features
-        self.hidden_units = trial.suggest_int("n_hidden_units", 15,60)
-        self.num_layers = trial.suggest_int("num_layers", 1, 3)
-        self.input_size = trial.suggest_int('input_size_LSTM', 40, 60)
+        self.hidden_units = trial.suggest_int("n_hidden_units", 5,60)
+        self.num_layers = trial.suggest_int("num_layers", 1, 5)
+        self.input_size = trial.suggest_int('input_size_LSTM', 20, 60)
 
         self.lstm = nn.LSTM(
             input_size= self.input_size,
@@ -40,7 +40,7 @@ class CausalTemporalLSTM_Optuna(nn.Module):
         self.linear1 = nn.Linear(in_features=self.num_features, out_features=self.input_size)
         self.linear2 = nn.Linear(in_features=self.hidden_units, out_features=out_dims)
 
-        self.dropout1 = nn.Dropout(p= 0.5) #trial.suggest_float('dropout_1', 0.1, 0.9)
+        self.dropout1 = nn.Dropout(p= trial.suggest_float('dropout_1', 0, 0.9)) # it was 0.5 for baseline
 
         self.dropout2 = nn.Dropout(p= trial.suggest_float('dropout_2', 0, 0.9)) 
 
