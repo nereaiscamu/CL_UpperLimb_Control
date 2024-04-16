@@ -42,9 +42,24 @@ from labml_nn.lstm import LSTMCell
 
 
 class HyperLSTMCell(Module):
+
     def __init__(self, input_size: int, hidden_size: int, hyper_size: int, n_z: int):
+        """
+        `input_size` is the size of the input $x_t$,
+        `hidden_size` is the size of the LSTM, and
+        `hyper_size` is the size of the smaller LSTM that alters the weights of the larger outer LSTM.
+        `n_z` is the size of the feature vectors used to alter the LSTM weights.
+
+        We use the output of the smaller LSTM to compute $z_h^{i,f,g,o}$, $z_x^{i,f,g,o}$ and
+        $z_b^{i,f,g,o}$ using linear transformations.
+        We calculate $d_h^{i,f,g,o}(z_h^{i,f,g,o})$, $d_x^{i,f,g,o}(z_x^{i,f,g,o})$, and
+        $d_b^{i,f,g,o}(z_b^{i,f,g,o})$ from these, using linear transformations again.
+        These are then used to scale the rows of weight and bias tensors of the main LSTM.
+        """
+
         super().__init__()
         self.hyper = LSTMCell(hidden_size + input_size, hyper_size, layer_norm=True)
+        # LSTMCell class takes x: torch.Tensor, h: torch.Tensor, c: torch.Tensor and returns h_next and c_next
         self.z_h = nn.Linear(hyper_size, 4 * n_z)
         self.z_x = nn.Linear(hyper_size, 4 * n_z)
         self.z_b = nn.Linear(hyper_size, 4 * n_z, bias=False)
@@ -67,14 +82,15 @@ class HyperLSTMCell(Module):
         self.layer_norm = nn.ModuleList([nn.LayerNorm(hidden_size) for _ in range(4)])
         self.layer_norm_c = nn.LayerNorm(hidden_size)
 
-    def forward(self, x: torch.Tensor,
+    def forward(self, x: torch.Tensor, e: torch.Tensor, #added e for the task embeddings
                 h: torch.Tensor, c: torch.Tensor,
                 h_hat: torch.Tensor, c_hat: torch.Tensor):
         # Defining input of the hypernetwork
-        x_hat = torch.cat((h, x), dim=-1)
+        #x_hat = torch.cat((h, x), dim=-1)
 
         # Computing cell and hidden states
-        h_hat, c_hat = self.hyper(x_hat, h_hat, c_hat)
+        h_hat, c_hat = self.hyper(e, h_hat, c_hat)  # --> changed x by e to make the 
+                                                    # hypernetwork output depend only on task embeddings.
 
         # Computing the embeddings
         z_h = self.z_h(h_hat).chunk(4, dim=-1)

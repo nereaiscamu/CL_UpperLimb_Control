@@ -41,6 +41,31 @@ def Regularizer_LSTM(model, alpha=1e-5, l1_ratio=0.5):
 
     return reg.item()
 
+
+def Regularizer_RNN(model, alpha=1e-5, l1_ratio=0.5):
+    """
+    Implement an L1-L2 penalty on the norm of the model weights.
+
+    model: CausalTemporalLSTM instance
+    alpha: scaling parameter for the regularization.
+    l1_ratio: mixing parameter between L1 and L2 loss.
+
+    Returns:
+    reg: regularization term
+    """
+    w_t = model.rnn.weight_ih_l0
+    w_l = model.linear.weight
+ 
+
+    l1_loss = w_t.abs().sum() + w_l.abs().sum() 
+    l2_loss = w_t.pow(2.0).sum() + w_l.pow(2.0).sum() 
+
+    reg = l1_ratio * l1_loss + (1 - l1_ratio) * l2_loss
+
+    reg = alpha * reg
+
+    return reg.item()
+
 class SequenceDataset(Dataset):
 
     def __init__(self, y, X, sequence_length=10):
