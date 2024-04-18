@@ -66,6 +66,38 @@ def Regularizer_RNN(model, alpha=1e-5, l1_ratio=0.5):
 
     return reg.item()
 
+
+
+def reg_hnet(model, alpha = 1e-5, l1_ratio = 0.5):
+    
+    """
+    Implement an L1-L2 penalty on the norm of the model weights.
+
+    model: MLP
+    alpha: scaling parameter for the regularization.
+    l1_ratio: mixing parameter between L1 and L2 loss.
+
+    Returns:
+    reg: regularization term
+    """
+    # Extract weight tensors for each layer
+    w1 = model._layer_weight_tensors[0]
+    w2 = model._layer_weight_tensors[1]
+    wo = model._layer_weight_tensors[2]
+ 
+
+    l1_loss = w1.abs().sum() + w2.abs().sum() + w3.abs().sum() 
+    l2_loss = w_1.pow(2.0).sum() + w_2.pow(2.0).sum() + w_3.pow(2.0).sum() 
+
+    reg = l1_ratio * l1_loss + (1 - l1_ratio) * l2_loss
+
+    reg = alpha * reg
+
+    return reg.item()
+
+
+
+
 class SequenceDataset(Dataset):
 
     def __init__(self, y, X, sequence_length=10):
@@ -325,3 +357,182 @@ def train_model(model, X,Y,
     model.load_state_dict(best_model_wts)
 
     return np.array(train_losses), np.array(val_losses)
+
+
+
+
+def train_hypernet(model, hnet,y_train_base, x_train_base,
+                y_train_stim,  x_train_stim,
+                y_val_base,  x_val_base,
+                y_val_stim,    x_val_stim,
+                lr=0.0001,
+                lr_step_size=10,
+                lr_gamma=0.9,
+                sequence_length_LSTM=10,
+                batch_size_train = 3,
+                batch_size_val = 3,
+                num_epochs=1000, 
+                delta = 8,                 
+                regularizer=None,
+                l1_ratio = 0.5,
+                alpha = 1e-5,     
+                early_stop = 5,
+                
+                ):
+
+    # Initialize the hypernetwork
+    hnet.apply_hyperfan_init(mnet=model)
+
+    # Set up the optimizer with the specified learning rate
+    optimizer = torch.optim.Adam(hnet.internal_params, lr=lr)
+
+    # Set up a learning rate scheduler
+    scheduler = lr_scheduler.StepLR(optimizer, 
+                                    step_size=lr_step_size, 
+                                    gamma=lr_gamma)
+    
+    
+        
+    # Keep track of the best model's parameters and loss
+    best_model_wts = deepcopy(model.state_dict())
+    best_loss = 1e8
+
+    # Enable anomaly detection for debugging
+    torch.autograd.set_detect_anomaly(True)
+
+    # Track the train and validation loss
+    train_losses = []
+    val_losses = []
+    # Counters for early stopping
+    not_increased = 0
+    end_train = 0
+    
+    # Reshape data for the LSTM
+    train_dataset_baseline = SequenceDataset(
+    y_train_base,    x_train_base,    sequence_length=sequence_length_LSTM)
+
+    train_dataset_stim = SequenceDataset(
+    y_train_stim,    x_train_stim,    sequence_length=sequence_length_LSTM)
+
+    val_dataset_baseline = SequenceDataset(
+    y_val_base,    x_val_base,    sequence_length=sequence_length_LSTM)
+
+    val_dataset_stim = SequenceDataset(
+    y_val_stim,    x_val_stim,    sequence_length=sequence_length_LSTM)
+
+    loader_train_b = data.DataLoader(train_dataset_baseline, batch_size=batch_size_train, shuffle=True)
+    loader_train_s = data.DataLoader(train_dataset_stim, batch_size=batch_size_train, shuffle=True)
+
+    loader_val_b = data.DataLoader(val_dataset_baseline, batch_size=batch_size_val, shuffle=True)
+    loader_val_s = data.DataLoader(val_dataset_stim, batch_size=batch_size_val, shuffle=True)
+
+    
+
+
+    # Loop through epochs
+    for epoch in np.arange(num_epochs):
+        for phase in ['train', 'val']:
+            # set model to train/validation as appropriate
+            if phase == 'train':
+                model.train()
+                loaders = zip(loader_train_b, loader_train_s)
+            else:
+                model.eval()
+                loaders = zip(loader_val_b, loader_val_s)
+
+            # Initialize variables to track loss and batch size
+            running_loss = 0
+            running_size = 0        
+
+            # Iterate over batches in the loader
+            for data_b, data_s in loaders:
+
+                # Define data for this batch
+                x_b = data_b[0]
+                y_b = data_b[1]
+                x_s = data_s[0]
+                y_s = data_s[1]
+
+                
+                if phase == "train":
+                    with torch.set_grad_enabled(True):
+                        optimizer.zero_grad()
+
+                        # Compute BASELINE loss.
+                        W_base = hnet(cond_id=0)
+                        base_P = model.forward(x_b, weights=W_base)
+                        base_P = torch.squeeze(base_P) # torch.sigmoid(base_P))
+                        loss_base = huber_loss(base_P, y_b, delta = delta)
+   
+                        
+                        # Compute STIMULATION loss.
+                        W_stim = hnet(cond_id=1)
+                        stim_P = model.forward(x_s, weights=W_stim)
+                        stim_P = torch.squeeze(stim_P) #torch.sigmoid(stim_P))
+                        loss_stim = huber_loss(stim_P, y_s, delta = delta)
+
+
+                        # Combine loss for 2 tasks
+                        loss_t = loss_base + loss_stim
+                        
+                        # Add regularization to the loss in the training phase
+                        if regularizer is not None:
+                            loss_t += regularizer(model, l1_ratio, alpha) 
+                        # Compute gradients and perform an optimization step
+                        loss_t.backward()
+                        optimizer.step()
+                else:
+                    # just compute the loss in validation phase
+                    W_base = hnet(cond_id=0)
+                    base_P = model.forward(x_b, weights=W_base)
+                    base_P = torch.squeeze(base_P) #torch.sigmoid(base_P))
+                    loss_base = huber_loss(base_P, y_b, delta = delta)
+
+                    W_stim = hnet(cond_id=1)
+                    stim_P = model.forward(x_s, weights=W_stim)
+                    stim_P = torch.squeeze(stim_P) #torch.sigmoid(stim_P))
+                    loss_stim = huber_loss(stim_P, y_s, delta = delta)
+
+                    loss_t = loss_base + loss_stim
+
+                # Ensure the loss is finite
+                assert torch.isfinite(loss_t)
+                running_loss += loss_t.item()
+                running_size += 1
+
+            # compute the train/validation loss and update the best
+            # model parameters if this is the lowest validation loss yet
+            running_loss /= running_size
+            if phase == "train":
+                train_losses.append(running_loss)
+            else:
+                val_losses.append(running_loss)
+                # Update best model parameters if validation loss improves
+                if running_loss < best_loss:
+                    best_loss = running_loss
+                    best_model_wts = deepcopy(model.state_dict())
+                    not_increased = 0
+                else:
+                    # Perform early stopping if validation loss doesn't improve
+                    if epoch > 10:
+                        not_increased += 1
+                        # print('Not increased : {}/5'.format(not_increased))
+                        if not_increased == early_stop:
+                            print('Decrease LR')
+                            for g in optimizer.param_groups:
+                                g['lr'] = g['lr'] / 2
+                            not_increased = 0
+                            end_train += 1
+                        
+                        if end_train == 2:
+                            model.load_state_dict(best_model_wts)
+                            return np.array(train_losses), np.array(val_losses), W_base, W_stim
+
+        # Update learning rate with the scheduler
+        scheduler.step()
+        print("Epoch {:03} Train {:.4f} Val {:.4f}".format(epoch, train_losses[-1], val_losses[-1]))
+
+    # load best model weights
+    model.load_state_dict(best_model_wts)
+
+    return np.array(train_losses), np.array(val_losses), W_base, W_stim
