@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 import math
 
-device = torch.device('cpu') #suposed to be cuda
+device = torch.device('cuda:0') #suposed to be cuda
 dtype = torch.float32
 
 def Regularizer_LSTM(model, alpha=1e-5, l1_ratio=0.5):
@@ -68,7 +68,7 @@ def Regularizer_RNN(model, alpha=1e-5, l1_ratio=0.5):
 
 
 
-def reg_hnet(model, alpha = 1e-5, l1_ratio = 0.5):
+def reg_hnet(model, alpha, l1_ratio):
     
     """
     Implement an L1-L2 penalty on the norm of the model weights.
@@ -80,20 +80,19 @@ def reg_hnet(model, alpha = 1e-5, l1_ratio = 0.5):
     Returns:
     reg: regularization term
     """
-    # Extract weight tensors for each layer
-    w1 = model._layer_weight_tensors[0]
-    w2 = model._layer_weight_tensors[1]
-    wo = model._layer_weight_tensors[2]
- 
+    l1_loss = 0
+    l2_loss = 0
 
-    l1_loss = w1.abs().sum() + w2.abs().sum() + w3.abs().sum() 
-    l2_loss = w_1.pow(2.0).sum() + w_2.pow(2.0).sum() + w_3.pow(2.0).sum() 
+    # Accumulate L1 and L2 losses for weight matrices in the model
+    for weight_tensor in model._layer_weight_tensors[1:2]:
+        l1_loss += torch.sum(torch.abs(weight_tensor))
+        l2_loss += torch.sum(weight_tensor.pow(2))
 
     reg = l1_ratio * l1_loss + (1 - l1_ratio) * l2_loss
 
     reg = alpha * reg
 
-    return reg.item()
+    return reg #.item()
 
 
 
@@ -178,9 +177,6 @@ def huber_loss(X, y, delta=8):
 
 
 def reshape_to_eval(x,y, model):
-    to_t_eval =  lambda array: torch.tensor(array, device='cpu', dtype=dtype)  
-    x = to_t_eval(x) 
-    y = to_t_eval(y)
     y_pred = model(x)
     y_array = y.detach().cpu().numpy()
     y_pred_array = y_pred.detach().cpu().numpy()
@@ -291,8 +287,8 @@ def train_model(model, X,Y,
 
             # Iterate over batches in the loader
             for X_, y_ in loader:
-                #X_ = X_.to('cuda')
-                #y_ = y_.to('cuda')
+                X_ = X_.to('cuda')
+                y_ = y_.to('cuda')
                 if phase == "train":
                     with torch.set_grad_enabled(True):
                         optimizer.zero_grad()
@@ -300,21 +296,21 @@ def train_model(model, X,Y,
                         output_t = model(X_)
                         output_t = torch.squeeze(output_t)
 
-
                         loss_t = huber_loss(output_t, y_, delta = delta)
                         
                         # Add regularization to the loss in the training phase
                         if regularizer is not None:
-                            loss_t += regularizer(model, l1_ratio, alpha)
+                            loss_t_r = loss_t + regularizer(model, l1_ratio, alpha)
                         # Compute gradients and perform an optimization step
-                        loss_t.backward()
+                        loss_t_r.backward()
                         optimizer.step()
                 else:
-                    # just compute the loss in validation phase
-                    output_t = model(X_)
-                    output_t = torch.squeeze(output_t)
+                    with torch.no_grad():
+                        # just compute the loss in validation phase
+                        output_t = model(X_)
+                        output_t = torch.squeeze(output_t)
 
-                    loss_t = huber_loss(output_t, y_, delta = delta)
+                        loss_t = huber_loss(output_t, y_, delta = delta)
 
                 # Ensure the loss is finite
                 assert torch.isfinite(loss_t)
@@ -391,8 +387,6 @@ def train_hypernet(model, hnet,y_train_base, x_train_base,
                                     step_size=lr_step_size, 
                                     gamma=lr_gamma)
     
-    
-        
     # Keep track of the best model's parameters and loss
     best_model_wts = deepcopy(model.state_dict())
     best_loss = 1e8
@@ -426,9 +420,6 @@ def train_hypernet(model, hnet,y_train_base, x_train_base,
     loader_val_b = data.DataLoader(val_dataset_baseline, batch_size=batch_size_val, shuffle=True)
     loader_val_s = data.DataLoader(val_dataset_stim, batch_size=batch_size_val, shuffle=True)
 
-    
-
-
     # Loop through epochs
     for epoch in np.arange(num_epochs):
         for phase in ['train', 'val']:
@@ -448,39 +439,45 @@ def train_hypernet(model, hnet,y_train_base, x_train_base,
             for data_b, data_s in loaders:
 
                 # Define data for this batch
-                x_b = data_b[0]
-                y_b = data_b[1]
-                x_s = data_s[0]
-                y_s = data_s[1]
-
-                
+                x_b = data_b[0].to('cuda')
+                y_b = data_b[1].to('cuda')
+                x_s = data_s[0].to('cuda')
+                y_s = data_s[1].to('cuda')
+               
                 if phase == "train":
                     with torch.set_grad_enabled(True):
                         optimizer.zero_grad()
 
                         # Compute BASELINE loss.
                         W_base = hnet(cond_id=0)
+                        print(W_base)
                         base_P = model.forward(x_b, weights=W_base)
                         base_P = torch.squeeze(base_P) # torch.sigmoid(base_P))
                         loss_base = huber_loss(base_P, y_b, delta = delta)
-   
                         
                         # Compute STIMULATION loss.
                         W_stim = hnet(cond_id=1)
+                        print(W_stim)
                         stim_P = model.forward(x_s, weights=W_stim)
                         stim_P = torch.squeeze(stim_P) #torch.sigmoid(stim_P))
                         loss_stim = huber_loss(stim_P, y_s, delta = delta)
 
-
                         # Combine loss for 2 tasks
-                        loss_t = loss_base + loss_stim
+                        loss_t = loss_base + loss_stim    
                         
                         # Add regularization to the loss in the training phase
                         if regularizer is not None:
                             loss_t += regularizer(model, l1_ratio, alpha) 
+
+                        
+                        
                         # Compute gradients and perform an optimization step
                         loss_t.backward()
                         optimizer.step()
+
+                        # Combine loss for 2 tasks
+                        loss_t = loss_base + loss_stim
+
                 else:
                     # just compute the loss in validation phase
                     W_base = hnet(cond_id=0)

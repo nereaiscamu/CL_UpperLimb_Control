@@ -12,7 +12,7 @@ import random
 from sklearn.preprocessing import StandardScaler
 
 import sys
-sys.path.append("c:\\Users\\nerea\\OneDrive\\Documentos\\EPFL_MASTER\\PDM\\Project\\PyalData")
+sys.path.append("./PyalData")
 from pyaldata import *
 
 
