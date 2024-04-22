@@ -95,6 +95,33 @@ def reg_hnet(model, alpha, l1_ratio):
     return reg #.item()
 
 
+def reg_hnet_noweights(weights, alpha, l1_ratio):
+    
+    """
+    Implement an L1-L2 penalty on the norm of the model weights.
+
+    model: MLP
+    alpha: scaling parameter for the regularization.
+    l1_ratio: mixing parameter between L1 and L2 loss.
+
+    Returns:
+    reg: regularization term
+    """
+    l1_loss = 0
+    l2_loss = 0
+
+    # Accumulate L1 and L2 losses for weight matrices in the model
+    for weight_tensor in weights[1:2]:
+        l1_loss += torch.sum(torch.abs(weight_tensor))
+        l2_loss += torch.sum(weight_tensor.pow(2))
+
+    reg = l1_ratio * l1_loss + (1 - l1_ratio) * l2_loss
+
+    reg = alpha * reg
+
+    return reg
+
+
 
 
 class SequenceDataset(Dataset):
@@ -301,6 +328,9 @@ def train_model(model, X,Y,
                         # Add regularization to the loss in the training phase
                         if regularizer is not None:
                             loss_t_r = loss_t + regularizer(model, l1_ratio, alpha)
+                        
+                        else:
+                            loss_t_r = loss_t
                         # Compute gradients and perform an optimization step
                         loss_t_r.backward()
                         optimizer.step()
@@ -450,33 +480,36 @@ def train_hypernet(model, hnet,y_train_base, x_train_base,
 
                         # Compute BASELINE loss.
                         W_base = hnet(cond_id=0)
-                        print(W_base)
                         base_P = model.forward(x_b, weights=W_base)
                         base_P = torch.squeeze(base_P) # torch.sigmoid(base_P))
                         loss_base = huber_loss(base_P, y_b, delta = delta)
                         
+                        
                         # Compute STIMULATION loss.
                         W_stim = hnet(cond_id=1)
-                        print(W_stim)
                         stim_P = model.forward(x_s, weights=W_stim)
                         stim_P = torch.squeeze(stim_P) #torch.sigmoid(stim_P))
                         loss_stim = huber_loss(stim_P, y_s, delta = delta)
-
-                        # Combine loss for 2 tasks
-                        loss_t = loss_base + loss_stim    
                         
+                        # Combine loss for 2 tasks
+                        loss_t = loss_base + loss_stim    #only for printing
+
                         # Add regularization to the loss in the training phase
                         if regularizer is not None:
-                            loss_t += regularizer(model, l1_ratio, alpha) 
+                            loss_stim_reg = loss_stim + regularizer(W_stim, l1_ratio, alpha)
+                            loss_base_reg = loss_base + regularizer(W_base, l1_ratio, alpha)
+                            # Combine loss for 2 tasks
+                            loss_t_r = loss_base_reg + loss_stim_reg
 
+                        else:               
+                            loss_t_r = loss_t 
                         
                         
+
                         # Compute gradients and perform an optimization step
-                        loss_t.backward()
+                        loss_t_r.backward()
                         optimizer.step()
 
-                        # Combine loss for 2 tasks
-                        loss_t = loss_base + loss_stim
 
                 else:
                     # just compute the loss in validation phase
