@@ -403,11 +403,17 @@ def train_hypernet(model, hnet,y_train_base, x_train_base,
                 l1_ratio = 0.5,
                 alpha = 1e-5,     
                 early_stop = 5,
+                chunks = False
                 
                 ):
 
+    
     # Initialize the hypernetwork
-    hnet.apply_hyperfan_init(mnet=model)
+
+    if chunks:
+        hnet.apply_chunked_hyperfan_init(mnet = model)
+    else: 
+        hnet.apply_hyperfan_init(mnet=model)
 
     # Set up the optimizer with the specified learning rate
     optimizer = torch.optim.Adam(hnet.internal_params, lr=lr)
@@ -527,6 +533,7 @@ def train_hypernet(model, hnet,y_train_base, x_train_base,
 
                 # Ensure the loss is finite
                 assert torch.isfinite(loss_t)
+                assert torch.isfinite(loss_t_r)
                 running_loss += loss_t.item()
                 running_size += 1
 

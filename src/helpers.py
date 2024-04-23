@@ -63,7 +63,7 @@ def mat2dataframe_NC(fname, shift_idx_fields=True, td_name = 'td_name'):
     df = pd.DataFrame(mat[td_name])
 
     # Apply the function to all columns of the DataFrame
-    df = df.map(replace_empty_list)
+    df = df.applymap(replace_empty_list)
     df= clean_0d_array_fields_NC(df) #changed from the function in pyaldata to avoid errors when some rows were arrays and other were not.
     df = data_cleaning.clean_integer_fields(df)
     
@@ -282,7 +282,7 @@ def build_tidy_df(df, start_margin = 10, end_margin = 10,ref_field = None):
             
             win_df.loc[it, t] = [col]
 
-    cols_to_search = ['index', 'num', 'type', 'KUKAPos']
+    cols_to_search = ['index', 'num', 'type', 'tonic_stim_params', 'KUKAPos']
     cols_to_keep = [c for c in cols_to_search if c in df.columns]
 
     for col in cols_to_keep:
@@ -296,6 +296,7 @@ def build_tidy_df(df, start_margin = 10, end_margin = 10,ref_field = None):
                 row = {
                      'num': win_df['num'][trial_num],
                     'type': win_df['type'][trial_num],
+                    'stim_params': win_df['tonic_stim_params'][trial_num],
                     #'KUKAPos': win_df['KUKAPos'][trial_num][reach_num], --> check if I need it, only in some data
                     'trial_num': trial_num,
                     'reach_num': reach_num,
@@ -393,7 +394,7 @@ def train_test_split(df, train_variable = 'both_rates',
     info_val = {}
     info_test = {}
 
-    cols_search = [ 'id','num', 'type', 'KUKAPos', 'trial_num', 'reach_num']
+    cols_search = [ 'id','num', 'type','stim_params','KUKAPos', 'trial_num', 'reach_num']
     info_cols = [c for c in cols_search if c in df.columns]
 
     for fold_idx in range(num_folds):
