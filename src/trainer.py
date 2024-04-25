@@ -119,6 +119,15 @@ def reg_hnet_noweights(weights, alpha, l1_ratio):
 
     reg = alpha * reg
 
+    # Accumulate L1 and L2 losses for weight matrices in the model
+    for weight_tensor in weights:
+        l1_loss += torch.sum(torch.abs(weight_tensor))
+        l2_loss += torch.sum(weight_tensor.pow(2))
+
+    reg_item = l1_ratio * l1_loss + (1 - l1_ratio) * l2_loss
+
+    reg_item = alpha * reg_item
+
     return reg
 
 
