@@ -1,1 +1,1 @@
-{"hidden_units": 26, "input_rec": 46, "seq_length_LSTM": 16, "num_units_hnet": 10, "chunk_size": 2653, "lr": 0.006382854409539065, "alpha_reg": 0.0002330025638797213, "l1_ratio_reg": 0.26768714750459, "batch_size": 22}
+{"hidden_units": 22, "input_rec": 51, "seq_length_LSTM": 10, "size_task_embedding": 19, "num_units_hnet": 27, "num_layers_hnet": 3, "lr": 0.004320940130391012, "lr_gamma": 1.2255870196855894, "huber_delta": 8, "alpha_reg": 0.00036710979427904543, "l1_ratio_reg": 0.6953641537406922, "batch_size": 20}

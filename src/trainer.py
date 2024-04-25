@@ -29,11 +29,11 @@ def Regularizer_LSTM(model, alpha=1e-5, l1_ratio=0.5):
     reg: regularization term
     """
     w_t = model.lstm.weight_ih_l0
-    w_l = model.linear.weight
     w_l_1 = model.linear1.weight
+    w_l_2 = model.linear2.weight
 
-    l1_loss = w_t.abs().sum() + w_l.abs().sum() + w_l_1.abs().sum()
-    l2_loss = w_t.pow(2.0).sum() + w_l.pow(2.0).sum() + w_l_1.pow(2.0).sum()
+    l1_loss = w_t.abs().sum() + w_l_1.abs().sum() + w_l_2.abs().sum()
+    l2_loss = w_t.pow(2.0).sum() + w_l_1.pow(2.0).sum() + w_l_2.pow(2.0).sum()
 
     reg = l1_ratio * l1_loss + (1 - l1_ratio) * l2_loss
 
