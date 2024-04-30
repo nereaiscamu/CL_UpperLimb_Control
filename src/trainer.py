@@ -111,7 +111,7 @@ def reg_hnet_noweights(weights, alpha, l1_ratio):
     l2_loss = 0
 
     # Accumulate L1 and L2 losses for weight matrices in the model
-    for weight_tensor in weights[1:2]:
+    for weight_tensor in weights:
         l1_loss += torch.sum(torch.abs(weight_tensor))
         l2_loss += torch.sum(weight_tensor.pow(2))
 
@@ -419,10 +419,11 @@ def train_hypernet(model, hnet,y_train_base, x_train_base,
     
     # Initialize the hypernetwork
 
+    # --> this was only when using th models from hypnettorch
     if chunks:
-        hnet.apply_chunked_hyperfan_init(mnet = model)
+         hnet.apply_chunked_hyperfan_init(mnet = model)
     else: 
-        hnet.apply_hyperfan_init(mnet=model)
+         hnet.apply_hyperfan_init(mnet=model)
 
     # Set up the optimizer with the specified learning rate
     optimizer = torch.optim.Adam(hnet.internal_params, lr=lr)
