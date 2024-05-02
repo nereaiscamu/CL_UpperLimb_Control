@@ -239,9 +239,7 @@ def split_time_fields(df, start_margin = 5, end_margin = 10,ref_field = None):
 
 
 
-
-
-def build_tidy_df(df, start_margin = 10, end_margin = 10,ref_field = None):
+def build_tidy_df(df, start_margin = 10, end_margin = 10,ref_field = None, stim_params = False):
 
     """ We want to split data for each reach inside trials.
     Only applies to the time varying fields.
@@ -281,8 +279,10 @@ def build_tidy_df(df, start_margin = 10, end_margin = 10,ref_field = None):
                 col.append(data)
             
             win_df.loc[it, t] = [col]
-
-    cols_to_search = ['index', 'num', 'type', 'tonic_stim_params', 'KUKAPos']
+    if stim_params:
+        cols_to_search = ['index', 'num', 'type', 'tonic_stim_params', 'KUKAPos']
+    else: 
+        cols_to_search = ['index', 'num', 'type', 'tonic_stim_params', 'KUKAPos']
     cols_to_keep = [c for c in cols_to_search if c in df.columns]
 
     for col in cols_to_keep:
@@ -293,16 +293,28 @@ def build_tidy_df(df, start_margin = 10, end_margin = 10,ref_field = None):
     for trial_num, trial in enumerate(win_df[time_fields[0]]):
         for reach_num, reach in enumerate(trial[0]):
             for timestamp, values in enumerate(reach):
-                row = {
-                     'num': win_df['num'][trial_num],
-                    'type': win_df['type'][trial_num],
-                    'stim_params': win_df['tonic_stim_params'][trial_num],
-                    #'KUKAPos': win_df['KUKAPos'][trial_num][reach_num], --> check if I need it, only in some data
-                    'trial_num': trial_num,
-                    'reach_num': reach_num,
-                    'time_sample': timestamp,
-                    'x' : values
-                }
+                if stim_params:
+                    row = {
+                        'num': win_df['num'][trial_num],
+                        'type': win_df['type'][trial_num],
+                        'stim_params': win_df['tonic_stim_params'][trial_num],
+                        #'KUKAPos': win_df['KUKAPos'][trial_num][reach_num], --> check if I need it, only in some data
+                        'trial_num': trial_num,
+                        'reach_num': reach_num,
+                        'time_sample': timestamp,
+                        'x' : values
+                    }
+
+                else:
+                    row = {
+                        'num': win_df['num'][trial_num],
+                        'type': win_df['type'][trial_num],
+                        #'KUKAPos': win_df['KUKAPos'][trial_num][reach_num], --> check if I need it, only in some data
+                        'trial_num': trial_num,
+                        'reach_num': reach_num,
+                        'time_sample': timestamp,
+                        'x' : values
+                    }
 
                 rows_0.append(row)
 
@@ -343,7 +355,7 @@ def min_max_normalize(vector):
     return norm_vec
 
 def train_test_split(df, train_variable = 'both_rates', 
-                     target_variable = 'x', num_folds = 5):
+                     target_variable = 'x', num_folds = 5, stim_params = False):
 
     """ This function creates disctionnaries to organize the data to perform 
     cross-fold validation. 
@@ -394,7 +406,10 @@ def train_test_split(df, train_variable = 'both_rates',
     info_val = {}
     info_test = {}
 
-    cols_search = [ 'id','num', 'type','stim_params','KUKAPos', 'trial_num', 'reach_num']
+    if stim_params:
+        cols_search = [ 'id','num', 'type','stim_params','KUKAPos', 'trial_num', 'reach_num']
+    else:
+        cols_search = [ 'id','num', 'type','KUKAPos', 'trial_num', 'reach_num']
     info_cols = [c for c in cols_search if c in df.columns]
 
     for fold_idx in range(num_folds):
@@ -460,6 +475,36 @@ def calculate_mode(data):
 
     return modes
 
+def get_dataset(data, fold):
+    X_train, y_train, X_val, y_val, X_test, y_test, info_train, info_val, info_test = train_test_split(data, train_variable = 'both_rates', 
+                                                                                                   target_variable = 'target_pos', num_folds = 5)
+    # Test one of the folds first
+    fold_num = 'fold{}'.format(fold)
+    fold = fold
+
+    print('We are testing the optimization method on fold ', fold)
+
+    X_train = X_train[fold_num]
+    X_val = X_val[fold_num]
+    X_test = X_test[fold_num]
+    y_test = y_test[fold_num]
+    y_train = y_train[fold_num]
+    y_val = y_val[fold_num]
+
+    seq_length = 75
+
+    # Reshape x_train to match the number of columns in the model's input layer
+    xx_train = X_train.reshape(X_train.shape[0] // seq_length, seq_length, X_train.shape[1])  
+    # Reshape y_train to match the number of neurons in the model's output layer
+    yy_train = y_train.reshape(y_train.shape[0] // seq_length, seq_length, y_train.shape[1])  
+
+    xx_val = X_val.reshape(X_val.shape[0] // seq_length, seq_length, X_val.shape[1])  
+    yy_val = y_val.reshape(y_val.shape[0] // seq_length, seq_length, y_val.shape[1])  
+
+    xx_test = X_test.reshape(X_test.shape[0] // seq_length, seq_length, X_test.shape[1])  
+    yy_test = y_test.reshape(y_test.shape[0] // seq_length, seq_length, y_test.shape[1])  
+
+    return xx_train, yy_train, xx_val, yy_val, xx_test, yy_test, info_train, info_val, info_test
 
 
 

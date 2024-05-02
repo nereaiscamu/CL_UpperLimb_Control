@@ -213,8 +213,12 @@ def huber_loss(X, y, delta=8):
 
 
 def reshape_to_eval(x,y, model):
-    y_pred = model(x)
-    y_array = y.detach().cpu().numpy()
+    # Convert X_train and y_train to PyTorch tensors
+    inputs = torch.tensor(x, device=device, dtype=torch.float32)
+    targets = torch.tensor(y, device=device, dtype=torch.float32)
+
+    y_pred = model(inputs)
+    y_array = targets.detach().cpu().numpy()
     y_pred_array = y_pred.detach().cpu().numpy()
 
     # Reshape tensors to 2D arrays (flatten the batch and sequence dimensions)
