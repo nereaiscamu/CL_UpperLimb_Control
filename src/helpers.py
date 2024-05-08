@@ -15,6 +15,7 @@ import sys
 sys.path.append("./PyalData")
 from pyaldata import *
 
+from collections import Counter
 
 
 def clean_0d_array_fields_NC(df):
@@ -336,26 +337,73 @@ def build_tidy_df(df, start_margin = 10, end_margin = 10,ref_field = None, stim_
     return df0
 
 
-def min_max_normalize(vector):
+def outliers_removal(data):
+    """
+    Description: Remove outliers from a data series represented as a list of lists.
+
+    Arguments:
+        data: Input data series to be processed. It should be represented as a list of lists,
+              where each inner list corresponds to a row of the original dataset.
+
+    Returns:
+        new_data: Data series with outliers removed. It's represented as a list of lists.
+
+    """
+
+    # Convert data series to 2D NumPy array
+    data = np.vstack(data)
+
+    # Defining superior and inferior thresholds
+    sup_thrs = np.median(data, axis = 0) + 3 * np.std(data, axis = 0)
+    inf_thrs = np.median(data, axis = 0) - 3 * np.std(data, axis = 0)
+
+    # Initialize a new array to store adjusted data
+    new_data = np.zeros_like(data)
+
+    # Iterate over each column of the data
+    for i in range(data.shape[1]):
+        # Replace outliers above the superior threshold with the median value of the column
+        new_data[:,i] = np.where(data[:,i] > sup_thrs[i], sup_thrs[i], data[:,i])
+        #new_data[:,i] = np.where(data[:,i] > sup_thrs[i], np.median(data[:,i], axis = 0), data[:,i])
+        # Replace outliers below the inferior threshold with the median value of the column
+        new_data[:,i] = np.where(new_data[:,i]  < inf_thrs[i], inf_thrs[i], new_data[:,i])
+        #new_data[:,i] = np.where(new_data[:,i]  < inf_thrs[i], np.median(data[:,i], axis = 0), new_data[:,i])
+    
+    # Convert adjusted data back to list format
+    return new_data.tolist()
+
+
+def min_max(vector):
+    mins = []
+    maxs = []
+    for i in range(0, vector.shape[1]):
+        mins.append(np.min(vector[:,i]))
+        maxs.append(np.max(vector[:,i]))
+    return mins, maxs
+
+
+def min_max_normalize(vector, mins, maxs):
     """
     Normalize a vector between 0 and 1 using Min-Max normalization.
 
     Args:
     - vector (numpy array): The input vector to be normalized.
+    - mins, maxs: lists of values to be used for the normalization
+    (usually computed on the training data)
 
     Returns:
     - normalized_vector (numpy array): The normalized vector.
     """
     norm_vec = np.zeros_like(vector)
     for i in range(0, vector.shape[1]):
-        min_val = np.min(vector[:,i])
-        max_val = np.max(vector[:,i])
-        norm_vec[:,i] = (vector[:,i] - min_val) / (max_val - min_val)
+        norm_vec[:,i] = (vector[:,i] - mins[i]) / (maxs[i] - mins[i])
 
     return norm_vec
 
+
 def train_test_split(df, train_variable = 'both_rates', 
-                     target_variable = 'x', num_folds = 5, stim_params = False):
+                     target_variable = 'x', num_folds = 5, stim_params = False, 
+                     no_outliers = False):
 
     """ This function creates disctionnaries to organize the data to perform 
     cross-fold validation. 
@@ -366,6 +414,11 @@ def train_test_split(df, train_variable = 'both_rates',
         - df: pandas DataFrame with tidy data
         - target_variable: str, either x, y, z, or angle. Default x.
         - num_folds: (int), number of folds used for cross-validation. Default 5.
+
+    Arguments:
+        - stim_parameters: if the dataset has stimulation parameters and 
+        we want to use them to make subsets for instance we want to keep them in data
+        - no_outliers: if True, the training set (target) will be clean of outliers.
     
     Returns:
         - X_train, y_train, X_val, y_val, X_test, y_test: dictionnaries 
@@ -405,6 +458,9 @@ def train_test_split(df, train_variable = 'both_rates',
     info_train = {}
     info_val = {}
     info_test = {}
+    list_mins = {}
+    list_maxs = {}
+
 
     if stim_params:
         cols_search = [ 'id','num', 'type','stim_params','KUKAPos', 'trial_num', 'reach_num']
@@ -431,6 +487,13 @@ def train_test_split(df, train_variable = 'both_rates',
         X_test_ =  np.stack(df_test[train_variable], axis = 0)
         y_test_ =  np.array(df_test[target_variable].tolist())
 
+        if no_outliers is True:
+            df_train['target_no_outliers'] = outliers_removal(df_train[target_variable])
+            y_train_ = np.array(df_train['target_no_outliers'].tolist())
+            df_val['target_no_outliers'] = outliers_removal(df_val[target_variable])
+            y_val_ = np.array(df_val['target_no_outliers'].tolist())
+
+
         scaler = StandardScaler().fit(X_train_)
 
         X_train_ = scaler.transform(X_train_)
@@ -439,19 +502,24 @@ def train_test_split(df, train_variable = 'both_rates',
 
 
         X_train['fold'+str(fold_idx)] = X_train_
-        y_train['fold'+str(fold_idx)] = min_max_normalize(y_train_)
+        #use training data to compute min and max values
+        mins, maxs = min_max(y_train_)
+        # apply min-max normalization with those values for training and val
+        y_train['fold'+str(fold_idx)] = min_max_normalize(y_train_, mins, maxs)
         X_val['fold'+str(fold_idx)] = X_val_
-        y_val['fold'+str(fold_idx)] = min_max_normalize(y_val_)
+        y_val['fold'+str(fold_idx)] = min_max_normalize(y_val_, mins, maxs)
         X_test['fold'+str(fold_idx)] = X_test_
-        y_test['fold'+str(fold_idx)] = min_max_normalize(y_test_)
+        y_test['fold'+str(fold_idx)] =  y_test_ #min_max_normalize(y_test_)
         info_train['fold'+str(fold_idx)] = train_info
         info_val['fold'+str(fold_idx)] = val_info
         info_test['fold'+str(fold_idx)] = test_info
+        list_mins['fold'+str(fold_idx)] = mins
+        list_maxs['fold'+str(fold_idx)] = maxs
 
-    return X_train, y_train, X_val, y_val, X_test, y_test, info_train, info_val, info_test
+    return X_train, y_train, X_val, y_val, X_test, y_test, info_train, info_val, info_test, list_mins, list_maxs
 
 
-from collections import Counter
+
 
 def calculate_mode(data):
     """
@@ -475,9 +543,15 @@ def calculate_mode(data):
 
     return modes
 
-def get_dataset(data, fold):
-    X_train, y_train, X_val, y_val, X_test, y_test, info_train, info_val, info_test = train_test_split(data, train_variable = 'both_rates', 
-                                                                                                   target_variable = 'target_pos', num_folds = 5)
+
+
+
+def get_dataset(data, fold, target_variable = 'target_pos',  no_outliers = False):
+
+
+    X_train, y_train, X_val, y_val, X_test, y_test, info_train, info_val, info_test, list_mins, list_maxs = train_test_split(data, train_variable = 'both_rates', 
+                                                                                                   target_variable = target_variable, num_folds = 5, 
+                                                                                                   no_outliers = no_outliers)
     # Test one of the folds first
     fold_num = 'fold{}'.format(fold)
     fold = fold
@@ -504,7 +578,7 @@ def get_dataset(data, fold):
     xx_test = X_test.reshape(X_test.shape[0] // seq_length, seq_length, X_test.shape[1])  
     yy_test = y_test.reshape(y_test.shape[0] // seq_length, seq_length, y_test.shape[1])  
 
-    return xx_train, yy_train, xx_val, yy_val, xx_test, yy_test, info_train, info_val, info_test
+    return xx_train, yy_train, xx_val, yy_val, xx_test, yy_test, info_train, info_val, info_test,  list_mins, list_maxs
 
 
 

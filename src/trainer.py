@@ -370,6 +370,7 @@ def train_model(model, X,Y,
                 # Update best model parameters if validation loss improves
                 if running_loss < best_loss:
                     best_loss = running_loss
+                    best_epoch = epoch
                     best_model_wts = deepcopy(model.state_dict())
                     not_increased = 0
                 else:
@@ -386,6 +387,7 @@ def train_model(model, X,Y,
                         
                         if end_train == 2:
                             model.load_state_dict(best_model_wts)
+                            print(best_epoch)
                             return np.array(train_losses), np.array(val_losses)
 
         # Update learning rate with the scheduler
@@ -394,6 +396,8 @@ def train_model(model, X,Y,
 
     # load best model weights
     model.load_state_dict(best_model_wts)
+
+    print(best_epoch)
 
     return np.array(train_losses), np.array(val_losses)
 
