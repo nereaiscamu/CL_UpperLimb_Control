@@ -59,7 +59,7 @@ def preprocess(data_file):
     td_filt['test_start'] = td_filt['idx_reach'].apply(lambda x: x[0])
     td_filt['test_end'] = td_filt['idx_end_complete'].apply(lambda x: x[0])
 
-    tidy_df = build_tidy_df(td_filt, start_margin = 5)
+    tidy_df = build_tidy_df(td_filt, start_margin = 1) #before it was 5 but it seemed too much
     tidy_df['target_pos'] = tidy_df.apply(lambda x: np.concatenate([x['x'][4:5], x['y'][4:5], x['z'][4:5]]), axis = 1)
     tidy_df['id'] = tidy_df['trial_num'].astype(str) + '_' + tidy_df['reach_num'].astype(str)
 

@@ -240,7 +240,7 @@ def split_time_fields(df, start_margin = 5, end_margin = 10,ref_field = None):
 
 
 
-def build_tidy_df(df, start_margin = 10, end_margin = 10,ref_field = None, stim_params = False):
+def build_tidy_df(df, start_margin = 5, end_margin = 10,ref_field = None, stim_params = False):
 
     """ We want to split data for each reach inside trials.
     Only applies to the time varying fields.
@@ -248,7 +248,7 @@ def build_tidy_df(df, start_margin = 10, end_margin = 10,ref_field = None, stim_
     Intput:
         - df: DataFrame
         - start and end margin: (int) samples to include before and after the reach and end indices.
-            Default 10.
+            Default 5. (we saw 10 was too much and led to instability in the beginning of the signal)
         - ref_field: argument of function "get_time_varying_fields", can stay "None"
     
     Internal variable:
@@ -267,7 +267,6 @@ def build_tidy_df(df, start_margin = 10, end_margin = 10,ref_field = None, stim_
 
     for it, row in df.iterrows():
         idx_reach_values = row.idx_reach
-        idx_end_values = row.idx_end_complete
 
         for t in time_fields:
             col = []
@@ -565,7 +564,7 @@ def get_dataset(data, fold, target_variable = 'target_pos',  no_outliers = False
     y_train = y_train[fold_num]
     y_val = y_val[fold_num]
 
-    seq_length = 75
+    seq_length = 75 if target_variable == 'target_pos'  else 74
 
     # Reshape x_train to match the number of columns in the model's input layer
     xx_train = X_train.reshape(X_train.shape[0] // seq_length, seq_length, X_train.shape[1])  
