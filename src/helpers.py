@@ -564,7 +564,7 @@ def get_dataset(data, fold, target_variable = 'target_pos',  no_outliers = False
     y_train = y_train[fold_num]
     y_val = y_val[fold_num]
 
-    seq_length = 75 if target_variable == 'target_pos'  else 74
+    seq_length = 75
 
     # Reshape x_train to match the number of columns in the model's input layer
     xx_train = X_train.reshape(X_train.shape[0] // seq_length, seq_length, X_train.shape[1])  
