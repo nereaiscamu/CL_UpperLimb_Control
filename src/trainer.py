@@ -14,7 +14,8 @@ import matplotlib.pyplot as plt
 
 import math
 
-device = torch.device('cuda:0') #suposed to be cuda
+#device = torch.device('cuda:0') #suposed to be cuda
+device = torch.device('cpu') #suposed to be cuda
 dtype = torch.float32
 
 def Regularizer_LSTM(model, alpha=1e-5, l1_ratio=0.5):
@@ -327,8 +328,8 @@ def train_model(model, X,Y,
 
             # Iterate over batches in the loader
             for X_, y_ in loader:
-                X_ = X_.to('cuda')
-                y_ = y_.to('cuda')
+                X_ = X_.to(device)
+                y_ = y_.to(device)
                 if phase == "train":
                     with torch.set_grad_enabled(True):
                         optimizer.zero_grad()

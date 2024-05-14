@@ -504,9 +504,9 @@ def train_test_split(df, train_variable = 'both_rates',
         #use training data to compute min and max values
         mins, maxs = min_max(y_train_)
         # apply min-max normalization with those values for training and val
-        y_train['fold'+str(fold_idx)] = min_max_normalize(y_train_, mins, maxs)
+        y_train['fold'+str(fold_idx)] = y_train_ #min_max_normalize(y_train_, mins, maxs)
         X_val['fold'+str(fold_idx)] = X_val_
-        y_val['fold'+str(fold_idx)] = min_max_normalize(y_val_, mins, maxs)
+        y_val['fold'+str(fold_idx)] = y_val_ #min_max_normalize(y_val_, mins, maxs)
         X_test['fold'+str(fold_idx)] = X_test_
         y_test['fold'+str(fold_idx)] =  y_test_ #min_max_normalize(y_test_)
         info_train['fold'+str(fold_idx)] = train_info
