@@ -14,8 +14,8 @@ import matplotlib.pyplot as plt
 
 import math
 
-#device = torch.device('cuda:0') #suposed to be cuda
-device = torch.device('cpu') #suposed to be cuda
+device = torch.device('cuda:0') #suposed to be cuda
+#device = torch.device('cpu') #suposed to be cuda
 dtype = torch.float32
 
 def Regularizer_LSTM(model, alpha=1e-5, l1_ratio=0.5):
@@ -65,7 +65,7 @@ def Regularizer_RNN(model, alpha=1e-5, l1_ratio=0.5):
 
     reg = alpha * reg
 
-    return reg.item()
+    return reg #.item()
 
 
 
