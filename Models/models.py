@@ -74,3 +74,104 @@ class CausalRNN(nn.Module):
         
         return output.squeeze()
     
+
+class Causal_Simple_RNN(nn.Module):
+    def __init__(self, num_features=124, 
+                hidden_units= 3, #was 128
+                num_layers = 2, 
+                out_dims = 6,
+                dropout = 0.5):
+        super(Causal_Simple_RNN, self).__init__()
+        self.num_features = num_features
+        self.hidden_units = hidden_units
+        self.num_layers = num_layers
+        self.out_dims = out_dims
+        self.dropout = dropout
+
+        self.linear = nn.Linear(in_features=self.hidden_units, out_features= self.out_dims)
+
+        self.rnn = nn.RNN(
+            input_size = self.num_features, 
+            hidden_size = self.hidden_units, 
+            num_layers = self.num_layers, 
+            nonlinearity='tanh', bias= True, 
+            batch_first= True, dropout=0.0, 
+            bidirectional=False,)  
+
+        self.selu = nn.SELU()
+    
+        self.dropout = nn.Dropout(p= dropout) #trial.suggest_float('dropout_1', 0.1, 0.9)
+        
+        # Flatten the parameters
+        self.rnn.flatten_parameters()
+
+    def forward(self, x):
+        x, _ = self.rnn(x)
+        x = self.dropout(x)
+        x = self.selu(x) 
+        output = self.linear(x)
+
+        return output.squeeze()
+    
+
+#### This model is meant to be used with hnets.
+import torch.nn.functional as F
+
+
+def create_state_dict(param_names, param_values):
+    s_d = {}
+    for n,v in zip(param_names, param_values):
+        s_d[n] = v
+    return s_d
+
+class RNN_Main_Model(nn.Module):
+    def __init__(self, hnet_output, 
+                 num_features = 124, 
+                hidden_size= 3, 
+                num_layers = 2, 
+                out_dims = 6,
+                dropout = 0.5,
+                bias = True,
+                LSTM_ = False):
+        
+        super(RNN_Main_Model, self).__init__()
+        self.num_features = num_features
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.hnet_output = hnet_output
+        self.bias = bias
+        self.out_features = out_dims
+        self.LSTM_ = LSTM_
+
+        self.dropout = nn.Dropout(p= dropout) #trial.suggest_float('dropout_1', 0.1, 0.9)
+
+        # Define recurrent layer
+        self.rnn = nn.RNN(self.num_features, self.hidden_size, self.num_layers, self.bias, batch_first = True, bidirectional = False)
+        names_p = [name for name, _ in self.rnn.named_parameters()]
+        self.hnet_output_dict = create_state_dict(names_p,hnet_output[2:] )
+
+        # Define recurrent layer (LSTM)
+        if self.LSTM_:
+            self.rnn = nn.LSTM(self.num_features, self.hidden_size, self.num_layers, self.bias, batch_first = True, bidirectional = False)
+            names_p = [name for name, _ in self.rnn.named_parameters()]
+            self.hnet_output_dict = create_state_dict(names_p,hnet_output[2:] )      
+
+        self.selu = nn.SELU()      
+
+    def forward(self, x, hx=None):
+        # Forward pass
+        if hx is None:
+            if self.LSTM_:
+                h0 = torch.randn(self.num_layers, x.size(0), self.hidden_size, device=x.device) * 0.1
+                c0 = torch.randn(self.num_layers, x.size(0), self.hidden_size, device=x.device) *0.1 # Initialize cell state
+                hx = (h0, c0)
+            else:
+                hx = torch.randn(self.num_layers, x.size(0), self.hidden_size, device=x.device) * 0.1
+        
+        # Perform RNN operation
+        x, _  = torch.func.functional_call(self.rnn, self.hnet_output_dict, (x, hx))
+        x = self.dropout(x)
+        x = self.selu(x) 
+        output =  F.linear(x, self.hnet_output[0], bias=self.hnet_output[1])
+        
+        return output.squeeze() 

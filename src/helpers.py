@@ -545,7 +545,7 @@ def calculate_mode(data):
 
 
 
-def get_dataset(data, fold, target_variable = 'target_pos',  no_outliers = False):
+def get_dataset(data, fold, target_variable = 'target_pos',  no_outliers = False, force_data = False):
 
 
     X_train, y_train, X_val, y_val, X_test, y_test, info_train, info_val, info_test, list_mins, list_maxs = train_test_split(data, train_variable = 'both_rates', 
@@ -565,6 +565,8 @@ def get_dataset(data, fold, target_variable = 'target_pos',  no_outliers = False
     y_val = y_val[fold_num]
 
     seq_length = 75
+    if force_data == True:
+        seq_length = 100
 
     # Reshape x_train to match the number of columns in the model's input layer
     xx_train = X_train.reshape(X_train.shape[0] // seq_length, seq_length, X_train.shape[1])  

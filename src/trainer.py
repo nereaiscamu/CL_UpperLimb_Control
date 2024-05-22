@@ -18,6 +18,8 @@ device = torch.device('cuda:0') #suposed to be cuda
 #device = torch.device('cpu') #suposed to be cuda
 dtype = torch.float32
 
+
+
 def Regularizer_LSTM(model, alpha=1e-5, l1_ratio=0.5):
     """
     Implement an L1-L2 penalty on the norm of the model weights.
@@ -30,17 +32,17 @@ def Regularizer_LSTM(model, alpha=1e-5, l1_ratio=0.5):
     reg: regularization term
     """
     w_t = model.lstm.weight_ih_l0
-    w_l_1 = model.linear1.weight
-    w_l_2 = model.linear2.weight
+    w_l_1 = model.linear.weight
+   
 
-    l1_loss = w_t.abs().sum() + w_l_1.abs().sum() + w_l_2.abs().sum()
-    l2_loss = w_t.pow(2.0).sum() + w_l_1.pow(2.0).sum() + w_l_2.pow(2.0).sum()
+    l1_loss = w_t.abs().sum() + w_l_1.abs().sum()
+    l2_loss = w_t.pow(2.0).sum() + w_l_1.pow(2.0).sum() 
 
     reg = l1_ratio * l1_loss + (1 - l1_ratio) * l2_loss
 
     reg = alpha * reg
 
-    return reg.item()
+    return reg
 
 
 def Regularizer_RNN(model, alpha=1e-5, l1_ratio=0.5):
@@ -246,7 +248,7 @@ def eval_model(xx_train, yy_train, xx_val, yy_val, xx_test, yy_test, model, metr
         testScore = math.sqrt(mean_squared_error(y_true_test, y_pred_test))
         print('Test Score: %.2f RMSE' % (testScore))
 
-        return y_pred_test, y_true_test,trainScore, valScore, testScore
+        return y_pred_val, y_true_val,trainScore, valScore, testScore
     
     elif metric == 'ev':
         #Compute explained variance
@@ -256,7 +258,17 @@ def eval_model(xx_train, yy_train, xx_val, yy_val, xx_test, yy_test, model, metr
         print('Train EV: %.2f ' % (ev_train))
         print('Val EV: %.2f ' % (ev_val))
         print('Test EV: %.2f ' % (ev_test))
-        return y_pred_test, y_true_test, ev_train, ev_val, ev_test
+        return y_pred_val, y_true_val, ev_train, ev_val, ev_test
+    
+    elif metric == 'r2':
+        #Compute explained variance
+        ev_train = r2_score(y_true_train, y_pred_train)
+        ev_val = r2_score(y_true_val, y_pred_val)
+        ev_test = r2_score(y_true_test, y_pred_test)
+        print('Train R2: %.2f ' % (ev_train))
+        print('Val R2: %.2f ' % (ev_val))
+        print('Test R2: %.2f ' % (ev_test))
+        return y_pred_val, y_true_val, ev_train, ev_val, ev_test
     
 
     
