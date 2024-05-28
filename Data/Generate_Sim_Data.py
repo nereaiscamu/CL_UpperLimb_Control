@@ -36,37 +36,33 @@ def generate_sim_data(data_matrix, num_sets):
         - simulated_data: dictionnary including all sets of simulated data"""
 
     num_neurons = data_matrix.shape[1]
+    num_samples = data_matrix.shape[0]
     num_sets = num_sets
     simulated_data = {}
         
     for set_ in range(num_sets):
         new_data = data_matrix.copy()
-        
 
-        num_fr_gain = int(np.ceil((random.sample(list(np.arange(10,21)),1)[0]/100)*num_neurons))
-        idx_fr_gain = random.sample(list(np.arange(0,num_neurons)), num_fr_gain)
+        num_fr_gain = int(np.ceil((random.sample(list(np.arange(10,20)),1)[0]/100)*num_samples))
+        idx_fr_gain = random.sample(list(np.arange(0,num_samples)), num_fr_gain)
         for i in idx_fr_gain:
-            new_data[:,i] = new_data[:,i]*1.2
+            new_data[i,:] = new_data[i,:]*1.2
 
-        original_neurons = [i for i in np.arange(0,num_neurons) if i not in idx_fr_gain]
-
-        num_fr_loss = int(np.ceil((random.sample(list(np.arange(10,21)),1)[0]/100)*num_neurons))
-        idx_fr_loss = random.sample(original_neurons, num_fr_loss)
+        num_fr_loss = int(np.ceil((random.sample(list(np.arange(10,20)),1)[0]/100)*num_samples))
+        idx_fr_loss = random.sample(list(np.arange(0,num_samples)), num_fr_loss)
         for i in idx_fr_loss:
-            new_data[:,i] = new_data[:,i]*0.8
+            new_data[i,:] = new_data[i,:]*0.8
 
-        original_neurons = [i for i in original_neurons if i not in idx_fr_loss]
-
-        num_replaced = int(np.ceil((random.sample(list(np.arange(0,5)),1)[0]/100)*num_neurons))
-        idx_replaced = random.sample(original_neurons, num_replaced)
-        neurons_to_replace = [i for i in original_neurons if i not in idx_replaced]
+        num_replaced = int(np.ceil((random.sample(list(np.arange(0,10)),1)[0]/100)*num_neurons))
+        idx_replaced = random.sample(list(np.arange(0,num_neurons)), num_replaced)
+        neurons_to_replace = [i for i in np.arange(0,num_neurons) if i not in idx_replaced]
         idx_to_replace = random.sample(neurons_to_replace, num_replaced)
         for old,new in zip(idx_replaced, idx_to_replace):
             new_data[:,old] = new_data[:,new]
 
-        original_neurons = [i for i in original_neurons if i not in idx_replaced]
+        original_neurons = [i for i in np.arange(0,num_neurons) if i not in idx_replaced]
         
-        num_removed = int(np.ceil((random.sample(list(np.arange(10,21)),1)[0]/100)*num_neurons))
+        num_removed = int(np.ceil((random.sample(list(np.arange(20,30)),1)[0]/100)*num_neurons))
         idx_removed = random.sample(original_neurons, num_removed)
         for i in idx_removed:
             new_data[:,i] = 0

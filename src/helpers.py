@@ -435,8 +435,9 @@ def train_test_split(df, train_variable = 'both_rates',
     val_ids = [[] for _ in range(num_folds)]  # Create empty lists for each fold
     test_ids = [[] for _ in range(num_folds)]  # Create empty lists for each fold
 
-    num_test = max(int(np.round(0.2*len(trial_ids))),1)
-    num_val = max(int(np.round(0.2*(len(trial_ids)-num_test))),1)
+    num_test = max(int(np.round(0.2*len(trial_ids))),1)  
+    num_val = max(int(np.round(0.2*(len(trial_ids)-num_test))),1) 
+    print('Train trials', len(trial_ids)-(num_test + num_val))
     print('Test trials ', num_test)
     print('Val trials', num_val)
     
@@ -508,7 +509,7 @@ def train_test_split(df, train_variable = 'both_rates',
         X_val['fold'+str(fold_idx)] = X_val_
         y_val['fold'+str(fold_idx)] = y_val_ #min_max_normalize(y_val_, mins, maxs)
         X_test['fold'+str(fold_idx)] = X_test_
-        y_test['fold'+str(fold_idx)] =  y_test_ #min_max_normalize(y_test_, mins, maxs)
+        y_test['fold'+str(fold_idx)] =  y_test_ # min_max_normalize(y_test_, mins, maxs)
         info_train['fold'+str(fold_idx)] = train_info
         info_val['fold'+str(fold_idx)] = val_info
         info_test['fold'+str(fold_idx)] = test_info
