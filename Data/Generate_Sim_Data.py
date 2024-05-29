@@ -43,15 +43,15 @@ def generate_sim_data(data_matrix, num_sets):
     for set_ in range(num_sets):
         new_data = data_matrix.copy()
 
-        num_fr_gain = int(np.ceil((random.sample(list(np.arange(10,20)),1)[0]/100)*num_samples))
+        num_fr_gain = int(np.ceil((random.sample(list(np.arange(5,15)),1)[0]/100)*num_samples))
         idx_fr_gain = random.sample(list(np.arange(0,num_samples)), num_fr_gain)
         for i in idx_fr_gain:
-            new_data[i,:] = new_data[i,:]*1.2
+            new_data[i,:] = new_data[i,:]*1.1
 
-        num_fr_loss = int(np.ceil((random.sample(list(np.arange(10,20)),1)[0]/100)*num_samples))
+        num_fr_loss = int(np.ceil((random.sample(list(np.arange(5,15)),1)[0]/100)*num_samples))
         idx_fr_loss = random.sample(list(np.arange(0,num_samples)), num_fr_loss)
         for i in idx_fr_loss:
-            new_data[i,:] = new_data[i,:]*0.8
+            new_data[i,:] = new_data[i,:]*0.9
 
         num_replaced = int(np.ceil((random.sample(list(np.arange(0,10)),1)[0]/100)*num_neurons))
         idx_replaced = random.sample(list(np.arange(0,num_neurons)), num_replaced)

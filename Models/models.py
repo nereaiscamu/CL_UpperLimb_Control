@@ -1,5 +1,7 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+
 
 
 class CausalTemporalLSTM(nn.Module):
@@ -115,14 +117,13 @@ class Causal_Simple_RNN(nn.Module):
     
 
 #### This model is meant to be used with hnets.
-import torch.nn.functional as F
-
-
 def create_state_dict(param_names, param_values):
     s_d = {}
     for n,v in zip(param_names, param_values):
         s_d[n] = v
     return s_d
+
+
 
 class RNN_Main_Model(nn.Module):
     def __init__(self, hnet_output, 
@@ -142,8 +143,9 @@ class RNN_Main_Model(nn.Module):
         self.bias = bias
         self.out_features = out_dims
         self.LSTM_ = LSTM_
+        self.dropout_value = dropout
 
-        self.dropout = nn.Dropout(p= dropout) #trial.suggest_float('dropout_1', 0.1, 0.9)
+        self.dropout = nn.Dropout(p= self.dropout_value) #trial.suggest_float('dropout_1', 0.1, 0.9)
 
         # Define recurrent layer
         self.rnn = nn.RNN(self.num_features, self.hidden_size, self.num_layers, self.bias, batch_first = True, bidirectional = False)
@@ -175,3 +177,33 @@ class RNN_Main_Model(nn.Module):
         output =  F.linear(x, self.hnet_output[0], bias=self.hnet_output[1])
         
         return output.squeeze() 
+
+
+class Task_Recog_Model(nn.Module):
+    def __init__(self, num_features=124, 
+                hidden_units= 3, #was 128
+                num_layers = 2, 
+                output_size = 6):
+        super(Task_Recog_Model, self).__init__()
+        self.num_features = num_features
+        self.hidden_units = hidden_units
+        self.num_layers = num_layers
+
+        self.rnn = nn.RNN(
+            input_size = self.num_features, 
+            hidden_size = self.hidden_units, 
+            num_layers = self.num_layers, 
+            nonlinearity='tanh', bias= True, 
+            batch_first= True, dropout=0.0, 
+            bidirectional=False,)  
+        
+        self.fc = nn.Linear(hidden_units, output_size)
+
+        # Flatten the parameters
+        self.rnn.flatten_parameters()
+
+    def forward(self, x):
+        x, _ = self.rnn(x)
+        out = self.fc(x[:, -1, :])
+
+        return out.squeeze()

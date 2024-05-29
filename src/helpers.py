@@ -12,7 +12,7 @@ import random
 from sklearn.preprocessing import StandardScaler
 
 import sys
-sys.path.append("./PyalData")
+sys.path.append("../PyalData")
 from pyaldata import *
 
 from collections import Counter
@@ -581,6 +581,145 @@ def get_dataset(data, fold, target_variable = 'target_pos',  no_outliers = False
     yy_test = y_test.reshape(y_test.shape[0] // seq_length, seq_length, y_test.shape[1])  
 
     return xx_train, yy_train, xx_val, yy_val, xx_test, yy_test, info_train, info_val, info_test,  list_mins, list_maxs
+
+
+
+###########################################################
+########### Helpers for Deep Learning 
+###########################################################
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+from torch.optim import lr_scheduler
+from sklearn.metrics import *
+device = torch.device('cuda:0') #suposed to be cuda
+from Models.models import *
+
+
+
+def weight_reset(m):
+    reset_parameters = getattr(m, "reset_parameters", None)
+    if callable(reset_parameters):
+        m.reset_parameters()
+
+
+###  Only to be used when training the RNN Main Model and testing it with hypernetworks
+def calc_explained_variance_mnet(x, y, weights, model):
+    """Compute the explained variance for a given dataset"""
+    with torch.no_grad():
+        # Process complete dataset as one batch.
+        # Convert X_train and y_train to PyTorch tensors
+        inputs = torch.tensor(x, device=device, dtype=torch.float32)
+        targets = torch.tensor(y, device=device, dtype=torch.float32)
+
+        model = RNN_Main_Model(num_features= model.num_features, hnet_output = weights,  hidden_size = model.hidden_size,
+                            num_layers= model.num_layers, out_dims=model.out_features,  
+                            dropout= model.dropout_value, LSTM_ = model.LSTM_).to(device)  
+
+        # Forward pass to get predictions
+        predictions = model(inputs)
+
+        y_array = targets.detach().cpu().numpy()
+        y_pred_array = predictions.detach().cpu().numpy()
+     
+        # Reshape tensors to 2D arrays (flatten the batch and sequence dimensions)
+        y_pred_2D = y_pred_array.reshape(-1, y_pred_array.shape[-1])
+        y_true_2D = y_array.reshape(-1, y_array.shape[-1])
+
+        # Compute explained variance
+        r2 = explained_variance_score(y_true_2D, y_pred_2D)
+
+    return r2
+
+
+def mean_squared_loss(y_true, y_pred):
+    """
+    Calculate the Mean Squared Error (MSE) between two tensors.
+    
+    Args:
+    - y_true: Tensor containing the true values (ground truth).
+    - y_pred: Tensor containing the predicted values.
+    
+    Returns:
+    - mse: Mean Squared Error between y_true and y_pred.
+    """
+    # Ensure both tensors have the same shape
+    assert y_true.shape == y_pred.shape, "Shapes of y_true and y_pred must match"
+
+    # Calculate squared differences between true and predicted values
+    squared_errors = (y_true - y_pred)**2
+
+    # Calculate the mean of squared errors
+    mse = torch.mean(squared_errors)
+
+    return mse
+
+def huber_loss(X, y, delta=8):
+    residual = torch.abs(X - y)
+    condition = residual < delta
+    loss = torch.where(condition, 0.5 * residual**2, delta * residual - 0.5 * delta**2)
+    return loss.mean()
+
+
+
+def reshape_to_eval(x,y, model):
+    # Convert X_train and y_train to PyTorch tensors
+    inputs = torch.tensor(x, device=device, dtype=torch.float32)
+    targets = torch.tensor(y, device=device, dtype=torch.float32)
+
+    y_pred = model(inputs)
+    y_array = targets.detach().cpu().numpy()
+    y_pred_array = y_pred.detach().cpu().numpy()
+
+    # Reshape tensors to 2D arrays (flatten the batch and sequence dimensions)
+    y_pred_2D = y_pred_array.reshape(-1, y_pred_array.shape[-1])
+    y_true_2D = y_array.reshape(-1, y_array.shape[-1])
+    
+    return y_true_2D, y_pred_2D
+
+
+
+def eval_model(xx_train, yy_train, xx_val, yy_val, xx_test, yy_test, model, metric = 'rmse'):
+
+    #Move tensors to cpu and reshape them for evaluation
+    y_true_train, y_pred_train = reshape_to_eval(xx_train,yy_train, model)
+    y_true_val, y_pred_val = reshape_to_eval(xx_val,yy_val, model)
+    y_true_test, y_pred_test = reshape_to_eval(xx_test,yy_test, model)
+
+    if metric == 'rmse':
+        # calculate root mean squared error
+        trainScore = math.sqrt(mean_squared_error(y_true_train, y_pred_train))
+        print('Train Score: %.2f RMSE' % (trainScore))
+        valScore = math.sqrt(mean_squared_error(y_true_val, y_pred_val))
+        print('Val Score: %.2f RMSE' % (valScore))
+        testScore = math.sqrt(mean_squared_error(y_true_test, y_pred_test))
+        print('Test Score: %.2f RMSE' % (testScore))
+
+        return y_pred_val, y_true_val,trainScore, valScore, testScore
+    
+    elif metric == 'ev':
+        #Compute explained variance
+        ev_train = explained_variance_score(y_true_train, y_pred_train)
+        ev_val = explained_variance_score(y_true_val, y_pred_val)
+        ev_test = explained_variance_score(y_true_test, y_pred_test)
+        print('Train EV: %.2f ' % (ev_train))
+        print('Val EV: %.2f ' % (ev_val))
+        print('Test EV: %.2f ' % (ev_test))
+        return y_pred_val, y_true_val, ev_train, ev_val, ev_test
+    
+    elif metric == 'r2':
+        #Compute explained variance
+        ev_train = r2_score(y_true_train, y_pred_train)
+        ev_val = r2_score(y_true_val, y_pred_val)
+        ev_test = r2_score(y_true_test, y_pred_test)
+        print('Train R2: %.2f ' % (ev_train))
+        print('Val R2: %.2f ' % (ev_val))
+        print('Test R2: %.2f ' % (ev_test))
+        return y_pred_val, y_true_val, ev_train, ev_val, ev_test
+
+
 
 
 
