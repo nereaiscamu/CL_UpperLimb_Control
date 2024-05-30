@@ -18,19 +18,33 @@ import random
 random.seed(42)
 
 
+def shuffle_columns(matrix, ratio):
+    new_matrix = matrix.copy()
+    # Generate a random permutation of column indices
+    num_neurons = matrix.shape[1]
+    num_columns_to_shuffle = int(ratio*num_neurons)
+    ind_to_permute = random.sample(list(np.arange(0,num_neurons)), num_columns_to_shuffle)
+    ind_to_permute = np.sort(ind_to_permute)
+    permuted_indices = np.random.permutation(ind_to_permute)
+    for i, new_i in zip(ind_to_permute, permuted_indices):
+        new_matrix[:,i] = matrix[:,new_i]
 
-def generate_sim_data(data_matrix, num_sets):
+    return new_matrix, ind_to_permute
+
+
+def generate_sim_data(data_matrix, num_sets, ratio):
 
     """ Function to generate the simulated data as a perturbation of the original 
     neural data using 4 different approaches:
-        - Increasing the firing rate of some neurons by 20%
-        - Decreasing the firing rate of some random neurons by 20%
-        - Replacing some neurons by some others from the dataset
-        - Putting some firing rate trains to 0 (we don't remove neurons for now to keep the same matrix dimensions
+        - Multiplying fire rate of neurons by gain from gaussian distribution.
+        - Adding offsets to the neurons sampled from gaussian distribution.
+        - Shuffling some neurons from the dataset and keeping the rest where they are.
+        - Putting some firing rate trains to 0 (we don't remove neurons for now to keep the same matrix dimensions.
         
     Inputs:
         - data_matrix: np.array containing all contatenated trials over time (rows) for each neuron (columns)
         - num_sets: integer, number of simulated matrices to generate
+        - ratio: int, num from 0 to 100 used to know the percentage of neurons to remove/shuffle
     
     Output: 
         - simulated_data: dictionnary including all sets of simulated data"""
@@ -43,30 +57,26 @@ def generate_sim_data(data_matrix, num_sets):
     for set_ in range(num_sets):
         new_data = data_matrix.copy()
 
-        num_fr_gain = int(np.ceil((random.sample(list(np.arange(5,15)),1)[0]/100)*num_samples))
-        idx_fr_gain = random.sample(list(np.arange(0,num_samples)), num_fr_gain)
-        for i in idx_fr_gain:
-            new_data[i,:] = new_data[i,:]*1.1
+        ### a) Multiplying each column by a random gain from gaussian dist.
+        gains = np.random.normal(1, 0.3, size=new_data.shape[1])
+        # Multiply each column of the matrix by the corresponding gain value
+        new_data = new_data * gains[:, np.newaxis].T
 
-        num_fr_loss = int(np.ceil((random.sample(list(np.arange(5,15)),1)[0]/100)*num_samples))
-        idx_fr_loss = random.sample(list(np.arange(0,num_samples)), num_fr_loss)
-        for i in idx_fr_loss:
-            new_data[i,:] = new_data[i,:]*0.9
+        ### b) Shuffle neuron positions
+        new_data, ind_to_permute = shuffle_columns(new_data, ratio)
 
-        num_replaced = int(np.ceil((random.sample(list(np.arange(0,10)),1)[0]/100)*num_neurons))
-        idx_replaced = random.sample(list(np.arange(0,num_neurons)), num_replaced)
-        neurons_to_replace = [i for i in np.arange(0,num_neurons) if i not in idx_replaced]
-        idx_to_replace = random.sample(neurons_to_replace, num_replaced)
-        for old,new in zip(idx_replaced, idx_to_replace):
-            new_data[:,old] = new_data[:,new]
-
-        original_neurons = [i for i in np.arange(0,num_neurons) if i not in idx_replaced]
+        original_neurons = [i for i in np.arange(0,num_neurons) if i not in ind_to_permute]
         
-        num_removed = int(np.ceil((random.sample(list(np.arange(20,30)),1)[0]/100)*num_neurons))
+        ### c) Remove neurons
+        num_removed = int(ratio*num_neurons)
         idx_removed = random.sample(original_neurons, num_removed)
         for i in idx_removed:
             new_data[:,i] = 0
-        #new_data = np.delete(new_data, idx_removed, axis = 1) --> If I remove data i will not be able to use the same models from one to another. Problem to solve later.
+        
+         ### d) Random offsets
+        offsets = np.random.normal(0, 0.3, size=new_data.shape[1])
+        # Multiply each column of the matrix by the corresponding gain value
+        new_data = new_data + offsets[:, np.newaxis].T
     
         simulated_data['Set_'+str(set_)] = new_data
     
@@ -77,14 +87,15 @@ def generate_sim_data(data_matrix, num_sets):
 
 if __name__ == "__main__":
     # Check if the correct number of arguments are provided
-    if len(sys.argv) != 4:
-        print("Usage: python script_name.py <name> <date> <num_generated_sets>")
+    if len(sys.argv) != 5:
+        print("Usage: python script_name.py <name> <date> <num_generated_sets> <ratio>")
         sys.exit(1)
 
     # Get the date and folder from command line arguments
     name = sys.argv[1]
     date = sys.argv[2]
     num_generated_sets = int(sys.argv[3])
+    ratio = int(sys.argv[4])/100
 
 
     data_dir = "./Processed_Data"
@@ -105,9 +116,9 @@ if __name__ == "__main__":
     data_matrix = np.vstack(baseline_df['both_rates'])
 
 
-    sim_data = generate_sim_data(data_matrix, num_sets = num_generated_sets)
+    sim_data = generate_sim_data(data_matrix, num_sets = num_generated_sets, ratio = ratio)
 
-    path_to_save_data = os.path.join(data_dir, 'Simulated_'+str(num_generated_sets)+'_'+name+'_'+str(date)+'.pkl')
+    path_to_save_data = os.path.join(data_dir, 'Simulated_'+str(num_generated_sets)+'_'+'ratio'+str(ratio)+'_'+name+'_'+str(date)+'.pkl')
 
     # Pickle the data and save it to file
     with open(path_to_save_data, 'wb') as handle:

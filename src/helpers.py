@@ -402,7 +402,7 @@ def min_max_normalize(vector, mins, maxs):
 
 def train_test_split(df, train_variable = 'both_rates', 
                      target_variable = 'x', num_folds = 5, stim_params = False, 
-                     no_outliers = False):
+                     no_outliers = False, std = True):
 
     """ This function creates disctionnaries to organize the data to perform 
     cross-fold validation. 
@@ -493,12 +493,12 @@ def train_test_split(df, train_variable = 'both_rates',
             df_val['target_no_outliers'] = outliers_removal(df_val[target_variable])
             y_val_ = np.array(df_val['target_no_outliers'].tolist())
 
+        if std == True:
 
-        scaler = StandardScaler().fit(X_train_)
-
-        X_train_ = scaler.transform(X_train_)
-        X_val_ = scaler.transform(X_val_)
-        X_test_ = scaler.transform(X_test_)
+            scaler = StandardScaler().fit(X_train_)
+            X_train_ = scaler.transform(X_train_)
+            X_val_ = scaler.transform(X_val_)
+            X_test_ = scaler.transform(X_test_)
 
 
         X_train['fold'+str(fold_idx)] = X_train_
@@ -546,12 +546,19 @@ def calculate_mode(data):
 
 
 
-def get_dataset(data, fold, target_variable = 'target_pos',  no_outliers = False, force_data = False):
+def get_dataset(data, fold, target_variable = 'target_pos',  no_outliers = False, force_data = False, std = True):
 
 
-    X_train, y_train, X_val, y_val, X_test, y_test, info_train, info_val, info_test, list_mins, list_maxs = train_test_split(data, train_variable = 'both_rates', 
-                                                                                                   target_variable = target_variable, num_folds = 5, 
-                                                                                                   no_outliers = no_outliers)
+    X_train, y_train, X_val,\
+          y_val, X_test, y_test,\
+              info_train, info_val,\
+                  info_test, list_mins,\
+                      list_maxs = train_test_split(data, 
+                                                train_variable = 'both_rates', 
+                                                target_variable = target_variable, 
+                                                num_folds = 5, 
+                                                no_outliers = no_outliers, 
+                                                std = std)
     # Test one of the folds first
     fold_num = 'fold{}'.format(fold)
     fold = fold
