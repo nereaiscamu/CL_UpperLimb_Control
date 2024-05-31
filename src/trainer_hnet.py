@@ -21,6 +21,9 @@ from Models.models import *
 from src.sequence_datasets import * 
 
 
+device = torch.device('cpu') #suposed to be cuda
+dtype = torch.float32
+
 def train_current_task(
         model, 
         hnet,
