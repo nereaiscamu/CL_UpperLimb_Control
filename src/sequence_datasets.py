@@ -63,8 +63,8 @@ class SequenceDataset(Dataset):
             sequence_length (int): The desired length of each sequence.
         """
         self.sequence_length = sequence_length
-        self.y = torch.tensor(y)
-        self.X = torch.tensor(X)
+        self.y = torch.tensor(y).float()
+        self.X = torch.tensor(X).float()
 
     def __len__(self):
         """

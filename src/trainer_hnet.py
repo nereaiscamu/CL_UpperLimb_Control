@@ -21,7 +21,7 @@ from Models.models import *
 from src.sequence_datasets import * 
 
 
-device = torch.device('cpu') #suposed to be cuda
+device = torch.device('cuda:0') #suposed to be cuda
 dtype = torch.float32
 
 def train_current_task(
@@ -202,7 +202,7 @@ def train_current_task(
 
         # Update learning rate with the scheduler
         scheduler.step()
-        print("Epoch {:03} Train {:.4f} Val {:.4f}".format(epoch, train_losses[-1], val_losses[-1]))
+        #print("Epoch {:03} Train {:.4f} Val {:.4f}".format(epoch, train_losses[-1], val_losses[-1]))
 
     # load best model weights
     model.load_state_dict(best_model_wts)
