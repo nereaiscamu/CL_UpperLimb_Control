@@ -31,8 +31,6 @@ def train_current_task(
         x_train,
         y_val,
         x_val,
-        optimizer,
-        scheduler,
         calc_reg = False,
         cond_id = 0,
         lr=0.0001,
@@ -51,12 +49,19 @@ def train_current_task(
         LSTM_ = False,
         chunks = False):
     
+    # Set up the optimizer with the specified learning rate
+    optimizer = torch.optim.Adam(hnet.internal_params, lr=lr)
+
+    # Set up a learning rate scheduler
+    scheduler = lr_scheduler.StepLR(optimizer, 
+                                    step_size=lr_step_size, 
+                                    gamma=lr_gamma)
+
     # Compute weights that result from hnet from all previous tasks
     if calc_reg == True:
         reg_targets = get_current_targets(cond_id, hnet)
         prev_hnet_theta = None
         prev_task_embs = None
-    
     
     
     # Keep track of the best model's parameters and loss
