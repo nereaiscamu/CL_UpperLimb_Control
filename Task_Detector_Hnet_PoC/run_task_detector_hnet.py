@@ -18,16 +18,21 @@ from hypnettorch.hnets import HyperNetInterface
 from hypnettorch.hnets import HMLP
 import copy
 
+from helpers_task_detector import *
+
 # Imports from other modules and packages in the project
 import os
 import sys
-sys.path.append('../')
-from src.helpers import *
+# Get the current directory of the script (generate_data.py)
+current_dir = os.path.dirname(os.path.abspath(__file__))
+# Navigate up two levels to reach the grandparent directory (CL Control)
+parent_dir = os.path.abspath(os.path.join(current_dir, '..',))
+sys.path.append(parent_dir)
+print(sys.path)
 from src.trainer import *
+from src.helpers import *
 from src.trainer_hnet import * 
-from src.helpers_task_detector import *
 from Models.models import *
-
 
 #### Model and hyperparameters definition
 

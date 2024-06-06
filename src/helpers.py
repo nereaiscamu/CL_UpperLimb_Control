@@ -12,7 +12,8 @@ import random
 from sklearn.preprocessing import StandardScaler
 
 import sys
-sys.path.append("../PyalData")
+
+sys.path.append("/home/nerea/CL_UpperLimb_Control/PyalData")
 from pyaldata import *
 
 from collections import Counter
@@ -638,7 +639,7 @@ def calc_explained_variance_mnet(x, y, weights, model):
         # Compute explained variance
         r2 = explained_variance_score(y_true_2D, y_pred_2D)
 
-    return r2, y_pred_2D
+    return r2, y_pred_array
 
 
 def mean_squared_loss(y_true, y_pred):
