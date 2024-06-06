@@ -1,7 +1,7 @@
 [
     {
         "experiment_name": "Experiment1",
-        "data": "Detector_Datasets_chewie_1007",
+        "data": "Detector_Datasets_Chewie_1007",
         "fold" : 0,
         "target_variable" : "vel",
         "alpha_reg": 1e-5,

@@ -54,20 +54,17 @@ def add_offset(matrix, ratio):
 
 # Manage data, models and folders
 
-def save_model(model, task_id, folder):
-    # Define the directory path
-    models_dir = "../Models"
-    task_models_dir = os.path.join(models_dir, folder)
+def save_model(model, task_id, path):
 
     # Check if the directory exists, if not, create it
-    if not os.path.exists(task_models_dir):
-        os.makedirs(task_models_dir)
+    if not os.path.exists(path):
+        os.makedirs(path)
 
     # Define the file name
     model_file_name = f"Model_Task_{task_id}.pth"  # Use .pth extension for PyTorch models
 
     # Save the model
-    model_path = os.path.join(task_models_dir, model_file_name)
+    model_path = os.path.join(path, model_file_name)
 
     # Save the model using torch.save
     torch.save(model, model_path)

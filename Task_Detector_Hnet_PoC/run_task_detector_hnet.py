@@ -44,13 +44,26 @@ torch.cuda.manual_seed(seed_value)  # If using CUDA
 # Define hyperparameters
 
 
-results_dict = []
+results_dict = {}
 
 def run_experiment(experiment, datasets):
 
-    # Experiment has all information about hyperparams etc.
-    for key, value in experiment.items():
-        exec(f"{key} = experiment['{key}']")
+    # Retrieve hyperparameters from the experiment_vars dictionary
+    hidden_units = experiment['hidden_units']
+    num_layers = experiment['num_layers']
+    dropout = experiment['dropout']
+    lr_detector = experiment['lr_detector']
+    lr_step_size = experiment['lr_step_size']
+    lr_gamma = experiment['lr_gamma']
+    seq_length_LSTM = experiment['seq_length_LSTM']
+    batch_size_train = experiment['batch_size_train']
+    batch_size_val = experiment['batch_size_val']
+    delta = experiment['delta']
+    l1_ratio_reg = experiment['l1_ratio_reg']
+    alpha_reg = experiment['alpha_reg']
+    lr_hnet = experiment['lr_hnet']
+    beta_hnet_reg = experiment['beta_hnet_reg']
+                            
 
     #### Template x_train and y_train to get the dimensions of the matrices
     for k in datasets.keys():
@@ -100,15 +113,18 @@ def run_experiment(experiment, datasets):
     ### From here all in the loop
     thrs = 0.8
     calc_reg = False
-    predicted_tasks = []
+   
 
     for s in datasets.keys():
+
+        results_dict_subset = {}
 
         #### Load data
         x_train, y_train, x_val, y_val, x_test, y_test = datasets[s]
 
         # Define models path and find max_id
         path_recog_models = './Models/Models_Task_Recognition/'+str(experiment['experiment_name'])
+        path_hnet_models = './Models/Models_HNET/'+str(experiment['experiment_name'])
         # Check if the directory exists, if not, create it
         if not os.path.exists(path_recog_models):
             os.makedirs(path_recog_models)
@@ -133,7 +149,8 @@ def run_experiment(experiment, datasets):
         if not r2_list:
             max_id = 0
             task_id = 0
-            predicted_tasks.append([s,task_id])
+            results_dict_subset['predicted_task'] = task_id
+            results_dict_subset['new_task'] = True
 
             print('Training on the first task!')
             print('Task_id for this task is ', task_id)
@@ -164,6 +181,8 @@ def run_experiment(experiment, datasets):
                             l1_ratio = l1_ratio_reg,
                             alpha = alpha_reg,     
                             early_stop = 5)
+            results_dict_subset['detector_train_losses'] = train_losses
+            results_dict_subset['detector_val_losses'] = val_losses
             
             # Evaluate model on first seen data
             y_hat, y_true,train_score, v_score, test_score = eval_model( x_train, y_train,
@@ -171,6 +190,10 @@ def run_experiment(experiment, datasets):
                                                                         x_test, y_test, 
                                                                         task_detector_i, 
                                                                         metric = 'r2')
+            results_dict_subset['y_true_detector'] = y_true
+            results_dict_subset['y_pred_detector'] = y_hat
+            results_dict_subset['r2_test_detector'] = test_score
+
             print('R2 for the task', task_id, ' is ', v_score)
 
             if v_score <thrs:
@@ -179,7 +202,7 @@ def run_experiment(experiment, datasets):
             else:
                 print('Task learned without issues.')
             # Save the trained model
-            save_model(task_detector_i, task_id, 'Models_Task_Recognition/'+str(experiment['experiment_name']))
+            save_model(task_detector_i, task_id, path_recog_models)
             print('Training now on the hnet')
             train_losses_, val_losses_, best_w_ =train_current_task(
                                                                 model, 
@@ -205,25 +228,39 @@ def run_experiment(experiment, datasets):
                                                                 early_stop = 5,
                                                                 chunks = False)
             W_best = hnet(cond_id = task_id)
-            r2 = calc_explained_variance_mnet(x_val, y_val, W_best, model)
+            r2, _ = calc_explained_variance_mnet(x_val, y_val, W_best, model)
+            r2_test, y_pred_test = calc_explained_variance_mnet(x_test, y_test, W_best, model)
+            results_dict_subset['y_true_hnet'] = y_test
+            results_dict_subset['y_pred_hnet'] = y_pred_test
+            results_dict_subset['r2_test_hnet'] = r2_test
             print('R2 for the HNET on Task ', task_id, ' is ', r2)
             # Save the trained model
-            save_model(hnet, task_id, "HNET_Task_Recog/"+str(experiment['experiment_name']))
+            save_model(hnet, task_id, path_hnet_models)
+            results_dict_subset['hnet_train_losses'] = train_losses_
+            results_dict_subset['hnet_val_losses'] = val_losses_
                 
         else:
             max_id = len(trained_detectors) - 1
             max_r2 = max(r2_list)
+
 
             if max_r2 > thrs:
 
                 # Show performance on the hnet
                 print('This data comes from a known task. ')
                 task_id = np.argmax(r2_list)
-                predicted_tasks.append([s,task_id])
+                results_dict_subset['predicted_task'] = task_id
+                results_dict_subset['new_task'] = False
+                results_dict_subset['r2_test_detector'] = max_r2
                 print('Task_id for this task is ', task_id)
                 W_i = hnet(cond_id = int(task_id))
-                r2 = calc_explained_variance_mnet(x_val, y_val, W_i, model)
+                r2, y_pred_val = calc_explained_variance_mnet(x_val, y_val, W_i, model)
+                r2_test, y_pred_test = calc_explained_variance_mnet(x_test, y_test, W_i, model)
+                results_dict_subset['r2_test_hnet'] = r2_test
+                results_dict_subset['y_true_hnet'] = y_test
+                results_dict_subset['y_pred_hnet'] = y_pred_test
                 print('R2 for the HNET on task', task_id, ' is ', r2)
+                
 
             else:
                 if task_id >0:
@@ -232,7 +269,8 @@ def run_experiment(experiment, datasets):
                 max_id += 1
                 print('max id has changed to ', max_id)
                 task_id = max_id
-                predicted_tasks.append([s,task_id])
+                results_dict_subset['predicted_task'] = task_id
+                results_dict_subset['new_task'] = True
                 print('Task_id for this task is ', task_id)
                 task_detector_i =  Causal_Simple_RNN(num_features=num_features, 
                             hidden_units= hidden_units, 
@@ -259,12 +297,18 @@ def run_experiment(experiment, datasets):
                                 l1_ratio = l1_ratio_reg,
                                 alpha = alpha_reg,     
                                 early_stop = 5)
+                
+                results_dict_subset['detector_train_losses'] = train_losses
+                results_dict_subset['detector_val_losses'] = val_losses
                 # Evaluate model on first seen data
                 y_hat, y_true,train_score, v_score, test_score = eval_model( x_train, y_train,
                                                                             x_val, y_val,
                                                                             x_test, y_test, 
                                                                             task_detector_i, 
                                                                             metric = 'r2')
+                results_dict_subset['y_true_detector'] = y_true
+                results_dict_subset['y_pred_detector'] = y_hat
+                results_dict_subset['r2_test_detector'] = test_score
                 print('R2 for the task', task_id, ' is ', v_score)
 
                 if v_score <thrs:
@@ -274,7 +318,7 @@ def run_experiment(experiment, datasets):
                     print('Task learned without issues.')
 
                 # Save the trained model
-                save_model(task_detector_i, task_id, 'Models_Task_Recognition/'+str(experiment['experiment_name']))
+                save_model(task_detector_i, task_id, path_recog_models)
                 print('Training now on the hnet')
                 train_losses_, val_losses_, best_w_ =train_current_task(
                                                                     model, 
@@ -285,7 +329,7 @@ def run_experiment(experiment, datasets):
                                                                     x_val, 
                                                                     calc_reg = calc_reg,
                                                                     cond_id = int(task_id),
-                                                                    lr=0.001,
+                                                                    lr=lr_hnet,
                                                                     lr_step_size=5,
                                                                     lr_gamma= lr_gamma, #0.9
                                                                     sequence_length_LSTM = seq_length_LSTM, #15
@@ -299,13 +343,23 @@ def run_experiment(experiment, datasets):
                                                                     alpha = alpha_reg,    
                                                                     early_stop = 5,
                                                                     chunks = False)
+                results_dict_subset['hnet_train_losses'] = train_losses_
+                results_dict_subset['hnet_val_losses'] = val_losses_
+
                 W_best = hnet(cond_id = task_id)
-                r2 = calc_explained_variance_mnet(x_val, y_val, W_best, model)
+                r2, _ = calc_explained_variance_mnet(x_val, y_val, W_best, model)
+                r2_test, y_pred_test = calc_explained_variance_mnet(x_test, y_test, W_best, model)
+                results_dict_subset['y_true_hnet'] = y_test
+                results_dict_subset['y_pred_hnet'] = y_pred_test
+                results_dict_subset['r2_test_hnet'] = r2_test
                 print('R2 for the HNET on Task ', task_id, ' is ', r2)
                 # Save the trained model
-                save_model(hnet, task_id, "HNET_Task_Recog/"+str(experiment['experiment_name']))
-        
-        print(predicted_tasks)
+                save_model(hnet, task_id, path_hnet_models)
+
+        results_dict[s] = results_dict_subset
+
+    return results_dict
+
 
 
 def main(args):
@@ -333,7 +387,7 @@ def main(args):
     if not os.path.exists(path_to_results):
         os.makedirs(path_to_results)
 
-    file_path = os.path.join(path_to_results, name'.pkl')
+    file_path = os.path.join(path_to_results, name+'.pkl')
     
     # Save the dictionary to a file usnig pickle
     with open(file_path, 'wb') as fp:

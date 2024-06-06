@@ -638,7 +638,7 @@ def calc_explained_variance_mnet(x, y, weights, model):
         # Compute explained variance
         r2 = explained_variance_score(y_true_2D, y_pred_2D)
 
-    return r2
+    return r2, y_pred_2D
 
 
 def mean_squared_loss(y_true, y_pred):
@@ -704,7 +704,7 @@ def eval_model(xx_train, yy_train, xx_val, yy_val, xx_test, yy_test, model, metr
         testScore = math.sqrt(mean_squared_error(y_true_test, y_pred_test))
         print('Test Score: %.2f RMSE' % (testScore))
 
-        return y_pred_val, y_true_val,trainScore, valScore, testScore
+        return y_pred_test, y_true_test,trainScore, valScore, testScore
     
     elif metric == 'ev':
         #Compute explained variance
@@ -714,7 +714,7 @@ def eval_model(xx_train, yy_train, xx_val, yy_val, xx_test, yy_test, model, metr
         print('Train EV: %.2f ' % (ev_train))
         print('Val EV: %.2f ' % (ev_val))
         print('Test EV: %.2f ' % (ev_test))
-        return y_pred_val, y_true_val, ev_train, ev_val, ev_test
+        return y_pred_test, y_true_test, ev_train, ev_val, ev_test
     
     elif metric == 'r2':
         #Compute explained variance
@@ -724,7 +724,7 @@ def eval_model(xx_train, yy_train, xx_val, yy_val, xx_test, yy_test, model, metr
         print('Train R2: %.2f ' % (ev_train))
         print('Val R2: %.2f ' % (ev_val))
         print('Test R2: %.2f ' % (ev_test))
-        return y_pred_val, y_true_val, ev_train, ev_val, ev_test
+        return y_pred_test, y_true_test, ev_train, ev_val, ev_test
 
 
 
