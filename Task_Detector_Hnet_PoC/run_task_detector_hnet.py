@@ -51,7 +51,7 @@ torch.cuda.manual_seed(seed_value)  # If using CUDA
 
 results_dict = {}
 
-def run_experiment(experiment, datasets):
+def run_experiment(experiment, datasets, thrs):
 
     # Retrieve hyperparameters from the experiment_vars dictionary
     hidden_units = experiment['hidden_units']
@@ -116,7 +116,7 @@ def run_experiment(experiment, datasets):
 
     
     ### From here all in the loop
-    thrs = 0.8
+  
     calc_reg = False
    
 
@@ -202,8 +202,8 @@ def run_experiment(experiment, datasets):
             print('R2 for the task', task_id, ' is ', v_score)
 
             if v_score <thrs:
-                print('ERROR, THE TASK COULD NOT BE LEARNED BY THE DETECTOR')
-                break
+                print('WARNING, THE TASK COULD NOT BE LEARNED BY THE DETECTOR')
+                #break
             else:
                 print('Task learned without issues.')
             # Save the trained model
@@ -370,6 +370,7 @@ def run_experiment(experiment, datasets):
 def main(args):
 
     index = args.index
+    thrs = args.thrs
 
     # Load the list of experiments from JSON
     with open(os.path.join('config.json'), 'r') as f:
@@ -385,7 +386,7 @@ def main(args):
     with open(os.path.join(data_dir, data+'.pkl'), 'rb') as fp:
         datasets = pickle.load(fp)
 
-    results_dict = run_experiment(experiment, datasets)
+    results_dict = run_experiment(experiment, datasets, thrs)
 
     path_to_results = os.path.join('.','Results')
 
@@ -410,6 +411,13 @@ if __name__ == "__main__":
         type=int,
         default=0,
         help="Index to iterate over the dictionary",
+    )
+
+    parser.add_argument(
+        "--thrs",
+        type=float,
+        default=0.8,
+        help="Threshold to consider the R2 valid and recognise a task.",
     )
 
     # parser.add_argument(

@@ -12,6 +12,7 @@ import pandas as pd
 import numpy as np
 import pickle
 import argparse
+import math
 
 # Imports from other modules and packages in the project
 import os
@@ -27,8 +28,13 @@ sys.path.append(grandparent_dir)
 from src.helpers import *
 from Task_Detector_Hnet_PoC.helpers_task_detector import *
 
-# Setting random seed
-random.seed(42)
+import time
+
+# Get the current time as an integer
+current_time = int(time.time())
+
+# Set the random seed using the current time
+random.seed(current_time)
 
 target_variable = 'vel'
 
@@ -40,6 +46,8 @@ def generate_data(baseline_df, fold):
     #the other for a new one. The idea is that the model is exposed to the 
     #other half dataset and recognises the task it has already trained before.
 
+    datasets = {}
+
     x_train, y_train, x_val, y_val,\
         x_test, y_test, info_train, info_val,\
             info_test, list_mins_base, \
@@ -50,8 +58,18 @@ def generate_data(baseline_df, fold):
                                                 force_data = True, 
                                                 std = False)
 
-    datasets = {}
     datasets['Data_'+str(0)+'_1'] = x_train, y_train, x_val, y_val, x_test, y_test
+
+    x_train, y_train, x_val, y_val,\
+        x_test, y_test, info_train, info_val,\
+            info_test, list_mins_base, \
+                list_maxs_base= get_dataset(baseline_df.iloc[size_data:, :], 
+                                                fold, 
+                                                target_variable= target_variable, 
+                                                no_outliers = False, 
+                                                force_data = True, 
+                                                std = False)
+    
     datasets['Data_'+str(0)+'_2'] = x_train, y_train, x_val, y_val, x_test, y_test
 
     for i in range(1,5):
@@ -59,12 +77,13 @@ def generate_data(baseline_df, fold):
         baseline_df_sim = baseline_df.copy()
         if i == 1:
             sim_data = remove_neurons(data_matrix, 30)
+            sim_data = add_offset(data_matrix,50)
         elif i==2:
             sim_data = shuffle_neurons(data_matrix, 60)
         elif i == 3:
             sim_data = add_gain(data_matrix,50)
         elif i == 4:
-            sim_data = add_gain(data_matrix,50)
+            sim_data = add_offset(data_matrix,50)
             
         baseline_df_sim['both_rates'] = sim_data.tolist()
         new_data = baseline_df_sim
@@ -78,6 +97,7 @@ def generate_data(baseline_df, fold):
                                                     no_outliers = False, 
                                                     force_data = True, 
                                                     std = False)
+        
         datasets['Data_'+str(i)+'_1'] = [x_train, y_train, x_val, y_val, x_test, y_test,]
 
         x_train, y_train, x_val, y_val,\
@@ -89,10 +109,12 @@ def generate_data(baseline_df, fold):
                                                     no_outliers = False, 
                                                     force_data = True, 
                                                     std = False)
+        
         datasets['Data_'+str(i)+'_2'] = [x_train, y_train, x_val, y_val, x_test, y_test,]
 
     # Shuffle the dictionnary keys to check the importance of the task order.
     keys_list = list(datasets.keys())
+    random.seed()
     random.shuffle(keys_list)
     shuffled_sets = {key: datasets[key] for key in keys_list}
 
