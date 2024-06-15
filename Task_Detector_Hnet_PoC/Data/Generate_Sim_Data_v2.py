@@ -38,7 +38,7 @@ random.seed(current_time)
 
 target_variable = 'vel'
 
-def get_reduced_sets(data, fold, num_trials = 'all'):
+def get_reduced_sets(data, fold, num_trials = -1):
     x_train, y_train, x_val, y_val,\
     x_test, y_test, info_train, info_val,\
         info_test, list_mins_base, \
@@ -48,25 +48,25 @@ def get_reduced_sets(data, fold, num_trials = 'all'):
                                             no_outliers = False, 
                                             force_data = True, 
                                             std = False)
-    if num_trials == 'all':
+    if num_trials == -1:
 
         size_train = int(x_train.shape[0]/2)
         size_val = int(x_val.shape[0]/2)
         size_test = int(x_test.shape[0]/2)
 
-        data1 = [x_train_reduced[:size_train,:,:],
-                y_train_reduced[:size_train,:,:],
-                x_val_reduced[:size_val,:,:],
-                y_val_reduced[:size_val,:,:],
-                x_test_reduced[:size_test,:,:],
-                y_test_reduced[:size_test,:,:]]
+        data1 = [x_train[:size_train,:,:],
+                y_train[:size_train,:,:],
+                x_val[:size_val,:,:],
+                y_val[:size_val,:,:],
+                x_test[:size_test,:,:],
+                y_test[:size_test,:,:]]
 
-        data2 = [x_train_reduced[size_train:,:,:],
-                y_train_reduced[size_train:,:,:],
-                x_val_reduced[size_val:,:,:],
-                y_val_reduced[size_val:,:,:],
-                x_test_reduced[size_test:,:,:],
-                y_test_reduced[size_test:,:,:]]
+        data2 = [x_train[size_train:,:,:],
+                y_train[size_train:,:,:],
+                x_val[size_val:,:,:],
+                y_val[size_val:,:,:],
+                x_test[size_test:,:,:],
+                y_test[size_test:,:,:]]
     else:
         trials_train = []
         trials_val = []
@@ -205,8 +205,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--num_trials",
         type=int,
-        default='All',
-        help="Number of trials to include for the experiment. Default All.",
+        default=-1,
+        help="Number of trials to include for the experiment. Default -1,means we use all trials.",
     )
 
     args = parser.parse_args()

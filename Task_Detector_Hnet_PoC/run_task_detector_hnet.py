@@ -51,7 +51,7 @@ torch.cuda.manual_seed(seed_value)  # If using CUDA
 
 results_dict = {}
 
-def run_experiment(experiment, datasets, thrs):
+def run_experiment(experiment, datasets):
 
     # Retrieve hyperparameters from the experiment_vars dictionary
     hidden_units = experiment['hidden_units']
@@ -68,6 +68,7 @@ def run_experiment(experiment, datasets, thrs):
     alpha_reg = experiment['alpha_reg']
     lr_hnet = experiment['lr_hnet']
     beta_hnet_reg = experiment['beta_hnet_reg']
+    thrs = experiment['thrs']
                             
 
     #### Template x_train and y_train to get the dimensions of the matrices
@@ -317,8 +318,8 @@ def run_experiment(experiment, datasets, thrs):
                 print('R2 for the task', task_id, ' is ', v_score)
 
                 if v_score <thrs:
-                    print('ERROR, THE TASK COULD NOT BE LEARNED BY THE DETECTOR')
-                    break
+                    print('WARNING, THE TASK COULD NOT BE LEARNED BY THE DETECTOR')
+                    #break
                 else:
                     print('Task learned without issues.')
 
@@ -370,35 +371,58 @@ def run_experiment(experiment, datasets, thrs):
 def main(args):
 
     index = args.index
-    thrs = args.thrs
 
     # Load the list of experiments from JSON
     with open(os.path.join('config.json'), 'r') as f:
         experiments = json.load(f)
 
-    experiment = experiments[index]
-    name = experiment['experiment_name']
-    print('Running esperiment ', name)
+    if index == -1:
+        for exp in range(44,50):
+            experiment = experiments[exp]
+            name = experiment['experiment_name']
+            print('Running esperiment ', name)
 
-    # Loading data
-    data = experiment['data']
-    data_dir = "./Data/"
-    with open(os.path.join(data_dir, data+'.pkl'), 'rb') as fp:
-        datasets = pickle.load(fp)
+            # Loading data
+            data = experiment['data']
+            data_dir = "./Data/"
+            with open(os.path.join(data_dir, data+'.pkl'), 'rb') as fp:
+                sets = pickle.load(fp)
 
-    results_dict = run_experiment(experiment, datasets, thrs)
+            results_dict = run_experiment(experiment, sets)
 
-    path_to_results = os.path.join('.','Results')
+            path_to_results = os.path.join('.','Results')
 
-    if not os.path.exists(path_to_results):
-        os.makedirs(path_to_results)
+            if not os.path.exists(path_to_results):
+                os.makedirs(path_to_results)
 
-    file_path = os.path.join(path_to_results, name+'.pkl')
-    
-    # Save the dictionary to a file usnig pickle
-    with open(file_path, 'wb') as fp:
-        pickle.dump(results_dict, fp)
+            file_path = os.path.join(path_to_results, name+'.pkl')
+            
+            # Save the dictionary to a file usnig pickle
+            with open(file_path, 'wb') as fp:
+                pickle.dump(results_dict, fp)
+    else:
+        experiment = experiments[index]
+        name = experiment['experiment_name']
+        print('Running esperiment ', name)
 
+        # Loading data
+        data = experiment['data']
+        data_dir = "./Data/"
+        with open(os.path.join(data_dir, data+'.pkl'), 'rb') as fp:
+            sets = pickle.load(fp)
+
+        results_dict = run_experiment(experiment, sets)
+
+        path_to_results = os.path.join('.','Results')
+
+        if not os.path.exists(path_to_results):
+            os.makedirs(path_to_results)
+
+        file_path = os.path.join(path_to_results, name+'.pkl')
+        
+        # Save the dictionary to a file usnig pickle
+        with open(file_path, 'wb') as fp:
+            pickle.dump(results_dict, fp)
 
 
 if __name__ == "__main__":
@@ -412,20 +436,6 @@ if __name__ == "__main__":
         default=0,
         help="Index to iterate over the dictionary",
     )
-
-    parser.add_argument(
-        "--thrs",
-        type=float,
-        default=0.8,
-        help="Threshold to consider the R2 valid and recognise a task.",
-    )
-
-    # parser.add_argument(
-    #     "--seed",
-    #     type=int,
-    #     default=1,
-    #     help="Set the initialization seed",
-    # )
 
     args = parser.parse_args()
     main(args)

@@ -6,8 +6,10 @@ Experiment 3: Same as 2, not interesting.
 Experiment 4: None.
 Experiment 5:Shuffled data, different order than experiment 2.
 Experiment 6:Shuffled data, different order than experiment 2 and 5.
-Experiment 7: Generate dataset of 5 trials each and see if the detector is still able to learn and if the threshold approach works. Threshold at 0.2.
-Experiment 8: Generate dataset of 1 trial each and see if the detector is still able to learn and if the threshold approach works.
+# here modified generate_sim_data_v2 to put task 1 to be mix of removed and shuffled neurons and gain and offset to 60% instead of 50. 
+#Changed shuffled to 50% instead of 60.
+Experiment 7: Generate dataset of 1 trials each and see if the detector is still able to learn and if the threshold approach works. Threshold at -0.1.
+Experiment 8: Generate dataset of 5 trial each and see if the detector is still able to learn and if the threshold approach works.Threshold at 0.2.
 Experiment 9: Generate dataset of 10 trials each and see if the detector is still able to learn and if the threshold approach works. Threshold at 0.4.
 Experiment 10: Generate dataset of 15 trials each and see if the detector is still able to learn and if the threshold approach works. Threshold at 0.5.
 Experiment 11: Generate dataset of 20 trials each and see if the detector is still able to learn and if the threshold approach works. Threshold at 0.6.
@@ -17,9 +19,14 @@ Experiment 14: Generate dataset of 35 trials each and see if the detector is sti
 Experiment 15: Generate dataset of 40 trials each and see if the detector is still able to learn and if the threshold approach works. Threshold at 0.8.
 Experiment 16: Generate dataset of 45 trials each and see if the detector is still able to learn and if the threshold approach works. Threshold at 0.8.
 Experiment 17: Generate dataset of 50 trials each and see if the detector is still able to learn and if the threshold approach works. Threshold at 0.8.
-# here modified generate_sim_data_v2 to put task 1 to be mix of removed and shuffled neurons and gain and offset to 60% instead of 50. 
-#Changed shuffled to 50% instead of 60.
-Experiment 18: Generate dataset of 10 trials each and see if the detector is still able to learn and if the threshold approach works. Threshold at 0.3.
-Experiment 19: Generate dataset of 5 trials each and see if the detector is still able to learn and if the threshold approach works. Threshold at -0.01.
-
+Experiment 18: Generate dataset of all trials each and see if the detector is still able to learn and if the threshold approach works. Threshold at 0.8.
+### Now trying everything with the same hyperparameters
+Experiment 19: Generate dataset of 1 trials each and see if the detector is still able to learn and if the threshold approach works. 
+Experiment 20: Generate dataset of 5 trial each and see if the detector is still able to learn and if the threshold approach works.
+Experiment 21: Generate dataset of 10 trials each and see if the detector is still able to learn and if the threshold approach works. 
+Experiment 22: Generate dataset of 15 trials each and see if the detector is still able to learn and if the threshold approach works. 
+Experiment 23: Generate dataset of 20 trials each and see if the detector is still able to learn and if the threshold approach works. 
+Experiment 24: Generate dataset of 25 trials each and see if the detector is still able to learn and if the threshold approach works. 
+Experiment 25: Generate dataset of 30 trials each and see if the detector is still able to learn and if the threshold approach works. 
+Experiment 26: Generate dataset of 35 trials each and see if the detector is still able to learn and if the threshold approach works. 
 
