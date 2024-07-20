@@ -36,7 +36,7 @@ def add_gain(matrix, ratio):
     ind_to_change = random.sample(list(np.arange(0,num_total_neurons)), num_neurons_to_change)
     for i, gain in zip(ind_to_change, gains):
         sim_data[:,i] = matrix[:,i]*gain
-    return sim_data
+    return abs(sim_data) # --> changed to abs as FR can't be negative. 18/07/2024
 
 
 def add_offset(matrix, ratio):
@@ -47,7 +47,8 @@ def add_offset(matrix, ratio):
     ind_to_change = random.sample(list(np.arange(0,num_total_neurons)), num_neurons_to_change)
     for i, offset in zip(ind_to_change, offsets):
         sim_data[:,i] = matrix[:,i] + offset
-    return sim_data
+    return abs(sim_data) # --> changed to abs as FR can't be negative. 18/07/2024
+
 
 
 

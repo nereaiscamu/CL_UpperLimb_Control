@@ -29,4 +29,6 @@ Experiment 23: Generate dataset of 20 trials each and see if the detector is sti
 Experiment 24: Generate dataset of 25 trials each and see if the detector is still able to learn and if the threshold approach works. 
 Experiment 25: Generate dataset of 30 trials each and see if the detector is still able to learn and if the threshold approach works. 
 Experiment 26: Generate dataset of 35 trials each and see if the detector is still able to learn and if the threshold approach works. 
-
+Experiment 51: Use dataset of trial 47. The beta value for the regularizer is 0.5 here. Need to check if the beta change can avoid catastrophic forgetting of the first task.
+Experiment 63: Use dataset 60, with all trials included and only positive values. Here the beta value for the first task was changed to 100. 
+Experiment 64: Use dataset 60, with all trials included and only positive values. Here the beta value for the first task was changed to 10000. 

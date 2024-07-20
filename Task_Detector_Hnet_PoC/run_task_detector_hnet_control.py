@@ -111,16 +111,15 @@ def run_experiment(experiment, datasets):
     model = RNN_Main_Model(num_features= num_features, hnet_output = w_test,  hidden_size = hidden_units,
                                 num_layers= num_layers,out_dims=num_dim_output,  
                                 dropout= dropout,  LSTM_ = LSTM_).to(device)
+    
     # Make sure the parameters of the model do not require gradient, as we want only to learn the hnet params
     for param in model.parameters():
         param.requires_grad = False
 
-    
     ### From here all in the loop
   
     calc_reg = False
    
-
     for s in datasets.keys():
 
         results_dict_subset = {}
@@ -129,8 +128,8 @@ def run_experiment(experiment, datasets):
         x_train, y_train, x_val, y_val, x_test, y_test = datasets[s]
 
         # Define models path and find max_id
-        path_recog_models = './Models/Models_Task_Recognition/'+str(experiment['experiment_name'])
-        path_hnet_models = './Models/Models_HNET/'+str(experiment['experiment_name'])
+        path_recog_models = './Models/Models_Task_Recognition/'+str(experiment['experiment_name']+'_control')
+        path_hnet_models = './Models/Models_HNET/'+str(experiment['experiment_name']+'_control')
         # Check if the directory exists, if not, create it
         if not os.path.exists(path_recog_models):
             os.makedirs(path_recog_models)
@@ -249,7 +248,6 @@ def run_experiment(experiment, datasets):
             max_id = len(trained_detectors) - 1
             max_r2 = max(r2_list)
 
-
             if max_r2 > thrs:
 
                 # Show performance on the hnet
@@ -259,6 +257,9 @@ def run_experiment(experiment, datasets):
                 results_dict_subset['new_task'] = False
                 results_dict_subset['r2_test_detector'] = max_r2
                 print('Task_id for this task is ', task_id)
+                # Load the hnet model trained on the current task
+                hnet = torch.load(os.path.join(path_hnet_models, f"Model_Task_{task_id}.pth")).to(device)
+                hnet.eval()
                 W_i = hnet(cond_id = int(task_id))
                 r2, y_pred_val = calc_explained_variance_mnet(x_val, y_val, W_i, model)
                 r2_test, y_pred_test = calc_explained_variance_mnet(x_test, y_test, W_i, model)
@@ -269,15 +270,12 @@ def run_experiment(experiment, datasets):
                 
 
             else:
-                
+                # if task_id >0:
+                #     calc_reg = True
                 print('This data comes from a different task !')
                 max_id += 1
                 print('max id has changed to ', max_id)
                 task_id = max_id
-
-                if task_id >0:
-                    calc_reg = True # --> CORRECTED BUG.BEFORE THIS WAS DEFINED BEFORE DEFINING THE NEW TASK ID.
-
                 results_dict_subset['predicted_task'] = task_id
                 results_dict_subset['new_task'] = True
                 print('Task_id for this task is ', task_id)
@@ -329,12 +327,16 @@ def run_experiment(experiment, datasets):
                 # Save the trained model
                 save_model(task_detector_i, task_id, path_recog_models)
                 print('Training now on the hnet')
-                
-                #if int(task_id) == 1:
-                    #beta_hnet = 10000  # changed on 16/07 to see if it solves the catastrophic forgetting for the first task         
-                # else:
-                #     beta_hnet = beta_hnet_reg             
 
+                hnet = HMLP(param_shapes, uncond_in_size=0,
+                cond_in_size=size_task_embedding,
+                layers=[13], 
+                num_cond_embs=num_conditions).to(device)
+
+                for param in hnet.parameters():
+                    param.requires_grad = True
+
+                hnet.apply_hyperfan_init()
 
                 train_losses_, val_losses_, best_w_ =train_current_task(
                                                                     model, 
@@ -343,7 +345,7 @@ def run_experiment(experiment, datasets):
                                                                     x_train, 
                                                                     y_val,
                                                                     x_val, 
-                                                                    calc_reg = calc_reg,
+                                                                    calc_reg = False,
                                                                     cond_id = int(task_id),
                                                                     lr=lr_hnet,
                                                                     lr_step_size=5,
@@ -353,7 +355,7 @@ def run_experiment(experiment, datasets):
                                                                     batch_size_val = batch_size_train, #15
                                                                     num_epochs=1000, 
                                                                     delta = delta,
-                                                                    beta = beta_hnet_reg,             
+                                                                    beta = None,             
                                                                     regularizer=reg_hnet,
                                                                     l1_ratio = l1_ratio_reg, #0.5
                                                                     alpha = alpha_reg,    
@@ -390,7 +392,7 @@ def main(args):
         for exp in range(44,50):
             experiment = experiments[exp]
             name = experiment['experiment_name']
-            print('Running esperiment ', name)
+            print('Running esperiment ', name, '_control')
 
             # Loading data
             data = experiment['data']
@@ -405,7 +407,7 @@ def main(args):
             if not os.path.exists(path_to_results):
                 os.makedirs(path_to_results)
 
-            file_path = os.path.join(path_to_results, name+'.pkl')
+            file_path = os.path.join(path_to_results, name+'_control.pkl')
             
             # Save the dictionary to a file usnig pickle
             with open(file_path, 'wb') as fp:
@@ -413,7 +415,7 @@ def main(args):
     else:
         experiment = experiments[index]
         name = experiment['experiment_name']
-        print('Running esperiment ', name)
+        print('Running esperiment ', name, '_control')
 
         # Loading data
         data = experiment['data']
@@ -428,7 +430,7 @@ def main(args):
         if not os.path.exists(path_to_results):
             os.makedirs(path_to_results)
 
-        file_path = os.path.join(path_to_results, name+'.pkl')
+        file_path = os.path.join(path_to_results, name+'_control.pkl')
         
         # Save the dictionary to a file usnig pickle
         with open(file_path, 'wb') as fp:
