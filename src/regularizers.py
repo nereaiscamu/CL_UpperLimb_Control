@@ -299,6 +299,7 @@ def calc_fix_target_reg(
 
     for i in ids_to_reg:
         weights_predicted = hnet.forward(cond_id=i, weights=weights)
+        #print('Computed weights for the regularizer from task ', i )
 
         if targets is not None:
             target = targets[i]

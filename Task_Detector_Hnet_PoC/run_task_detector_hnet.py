@@ -17,6 +17,7 @@ from torch.utils.data import Dataset
 from hypnettorch.hnets import HyperNetInterface
 from hypnettorch.hnets import HMLP
 import copy
+import time
 
 from helpers_task_detector import *
 
@@ -69,6 +70,8 @@ def run_experiment(experiment, datasets):
     lr_hnet = experiment['lr_hnet']
     beta_hnet_reg = experiment['beta_hnet_reg']
     thrs = experiment['thrs']
+    hidden_layers_hnet = experiment['hidden_layers_hnet']
+    emb_size = experiment['embedding_size']
                             
 
     #### Template x_train and y_train to get the dimensions of the matrices
@@ -92,11 +95,11 @@ def run_experiment(experiment, datasets):
     param_shapes = [p.shape for p in list(task_detector_model.parameters())]
 
     num_conditions = 60 # we want more possible conditions than what we can reach
-    size_task_embedding = 8 # seemed to work well 
+    size_task_embedding = 24 # changed to test on 22/07 it was 8 # seemed to work well 
 
     hnet = HMLP(param_shapes, uncond_in_size=0,
-                cond_in_size=size_task_embedding,
-                layers=[13], 
+                cond_in_size=emb_size, #usually we had size_task_embedding
+                layers=hidden_layers_hnet, # trying different values on 22/07, before that it was [13]
                 num_cond_embs=num_conditions).to(device)
 
     for param in hnet.parameters():
@@ -122,6 +125,8 @@ def run_experiment(experiment, datasets):
    
 
     for s in datasets.keys():
+
+        
 
         results_dict_subset = {}
 
@@ -155,6 +160,7 @@ def run_experiment(experiment, datasets):
         if not r2_list:
             max_id = 0
             task_id = 0
+            
             results_dict_subset['predicted_task'] = task_id
             results_dict_subset['new_task'] = True
 
@@ -210,6 +216,8 @@ def run_experiment(experiment, datasets):
             # Save the trained model
             save_model(task_detector_i, task_id, path_recog_models)
             print('Training now on the hnet')
+            # Record the start time
+            start_time = time.time()
             train_losses_, val_losses_, best_w_ =train_current_task(
                                                                 model, 
                                                                 hnet,
@@ -230,7 +238,7 @@ def run_experiment(experiment, datasets):
                                                                 beta = beta_hnet_reg, 
                                                                 regularizer= reg_hnet,
                                                                 l1_ratio = l1_ratio_reg, #0.5
-                                                                alpha = alpha_reg,    
+                                                                alpha = 0.01, # before it was alpha_reg. Changed in 22/07.
                                                                 early_stop = 5,
                                                                 chunks = False)
             W_best = hnet(cond_id = task_id)
@@ -244,6 +252,11 @@ def run_experiment(experiment, datasets):
             save_model(hnet, task_id, path_hnet_models)
             results_dict_subset['hnet_train_losses'] = train_losses_
             results_dict_subset['hnet_val_losses'] = val_losses_
+            # Record the end time
+            end_time = time.time()
+            # Calculate the elapsed time
+            elapsed_time = end_time - start_time
+            results_dict_subset['training_time'] = elapsed_time
                 
         else:
             max_id = len(trained_detectors) - 1
@@ -329,13 +342,8 @@ def run_experiment(experiment, datasets):
                 # Save the trained model
                 save_model(task_detector_i, task_id, path_recog_models)
                 print('Training now on the hnet')
-                
-                #if int(task_id) == 1:
-                    #beta_hnet = 10000  # changed on 16/07 to see if it solves the catastrophic forgetting for the first task         
-                # else:
-                #     beta_hnet = beta_hnet_reg             
-
-
+                # Record the start time
+                start_time = time.time()
                 train_losses_, val_losses_, best_w_ =train_current_task(
                                                                     model, 
                                                                     hnet,
@@ -354,13 +362,19 @@ def run_experiment(experiment, datasets):
                                                                     num_epochs=1000, 
                                                                     delta = delta,
                                                                     beta = beta_hnet_reg,             
-                                                                    regularizer=reg_hnet,
+                                                                    regularizer=reg_hnet,# None, --> changed on 20/07/24 to check if learning is faster.
                                                                     l1_ratio = l1_ratio_reg, #0.5
                                                                     alpha = alpha_reg,    
                                                                     early_stop = 5,
                                                                     chunks = False)
                 results_dict_subset['hnet_train_losses'] = train_losses_
                 results_dict_subset['hnet_val_losses'] = val_losses_
+                # Record the end time
+                end_time = time.time()
+                # Calculate the elapsed time
+                elapsed_time = end_time - start_time
+                results_dict_subset['training_time'] = elapsed_time
+
 
                 W_best = hnet(cond_id = task_id)
                 r2, _ = calc_explained_variance_mnet(x_val, y_val, W_best, model)

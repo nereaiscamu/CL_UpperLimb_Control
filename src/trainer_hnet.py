@@ -143,8 +143,9 @@ def train_current_task(
                                 mnet=model,
                                 prev_theta=prev_hnet_theta,
                                 prev_task_embs=prev_task_embs,)
-
+                            #print('Beta value for this task :', beta)
                             loss_t = loss_task + beta * loss_reg 
+
 
                         else:
                             loss_t = loss_task 

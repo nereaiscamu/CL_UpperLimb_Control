@@ -31,4 +31,11 @@ Experiment 25: Generate dataset of 30 trials each and see if the detector is sti
 Experiment 26: Generate dataset of 35 trials each and see if the detector is still able to learn and if the threshold approach works. 
 Experiment 51: Use dataset of trial 47. The beta value for the regularizer is 0.5 here. Need to check if the beta change can avoid catastrophic forgetting of the first task.
 Experiment 63: Use dataset 60, with all trials included and only positive values. Here the beta value for the first task was changed to 100. 
-Experiment 64: Use dataset 60, with all trials included and only positive values. Here the beta value for the first task was changed to 10000. 
+Experiment 64: Use dataset 60, with all trials included and only positive values. Here corrected bug, now firts task retained. 
+Experiment 65: Same as 64 but we will only use regularization on the tasks which do not have CL reg (so when calc_reg = 0)
+Experiment66: Use sorted datasets from data 60. No regularization within tasks, only the CL. 
+Experiment67: Use sorted datasets from data 60. Here regularization within tasks, plus the CL. 
+Experiment68_control: Use sorted datasets from data 60. Here regularization within tasks, not CL. Here the difference is that we removed the hyperfan init to see if that was making the hypernetwork learn faster. 
+Experiment69: Use sorted datasets from data 60. Here regularization within tasks, plus the CL. Changed the architecture of the hypernetwork to see the difference (from 1 hidden layer size 13, to 2 hidden layers size 100 (default from hypnettorch))
+Experiment70: Use sorted datasets from data 60. Here regularization within tasks, plus the CL. Changed the architecture of the hypernetwork to see the difference (from 1 hidden layer size 13, to 2 hidden layers size 100 (default from hypnettorch)). Here we also increase the embedding size from 8 to 24. 
+Experiment73: Same as 71, but here in the script the alpha reg for the first trained task in the hnet is 0.01, while for the rest it is 1e-5. It should increase the impact of CL in late tasks and avoid overfitting on the first task. 

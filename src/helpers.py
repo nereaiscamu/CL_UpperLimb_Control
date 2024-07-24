@@ -432,7 +432,7 @@ def train_test_split(df, train_variable = 'both_rates',
     random.seed(42)
     
     trial_ids = np.unique(df['id'].values)
-    train_ids = [[] for _ in range(num_folds)] #generic to all folds
+    train_ids = [[] for _ in range(num_folds)] # generic to all folds
     val_ids = [[] for _ in range(num_folds)]  # Create empty lists for each fold
     test_ids = [[] for _ in range(num_folds)]  # Create empty lists for each fold
 
@@ -727,6 +727,54 @@ def eval_model(xx_train, yy_train, xx_val, yy_val, xx_test, yy_test, model, metr
         print('Test R2: %.2f ' % (ev_test))
         return y_pred_test, y_true_test, ev_train, ev_val, ev_test
 
+
+################################################
+#### Helpers EWC 
+################################################
+from  copy  import deepcopy
+
+def save_optimal_params(model):
+    params = {n: p for n, p in model.named_parameters() if p.requires_grad}
+    p_old = {}
+
+    for n, p in deepcopy(params).items():
+        p_old[n] = p.data
+    return p_old
+
+
+
+def compute_fisher_information(model, dataset, params, empirical=True):
+    fisher = {n: torch.zeros_like(p) for n, p in deepcopy(params).items()}
+    
+    model.train()
+    for input, gt_label in dataset:
+        model.zero_grad()
+        output = model(input).view(-1)
+        if empirical:
+            label = gt_label.view(-1)
+        else:
+            label = output.max(1)[1].view(-1)
+        
+        h_loss  = huber_loss(output, label)
+        h_loss.backward()
+        
+        for n, p in model.named_parameters():
+            fisher[n].data += p.grad.data ** 2 / len(dataset)
+
+    fisher = {n: p for n, p in fisher.items()}
+
+    return fisher
+
+def ewc_loss(model, fisher_matrices, optimal_params):
+    loss = 0
+    num_tasks = len(fisher_matrices)
+    for task in fisher_matrices:
+        for n, p in model.named_parameters():
+            fisher = fisher_matrices[task][n]
+            optimal_p = optimal_params[task][n]
+            loss += (fisher * (p - optimal_p) ** 2).sum()
+    loss = loss / num_tasks  # Normalize by the number of tasks
+    return loss
 
 
 
