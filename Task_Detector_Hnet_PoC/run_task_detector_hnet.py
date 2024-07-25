@@ -52,6 +52,14 @@ torch.cuda.manual_seed(seed_value)  # If using CUDA
 
 results_dict = {}
 
+
+def create_sets(datasets, num_trials):
+    red_sets = get_reduced_sets(datasets, num_trials)
+    shuffled_sets = shuffle_sets(red_sets)
+    sorted_data = ensure_baseline_first(shuffled_sets)
+    return sorted_data
+
+
 def run_experiment(experiment, datasets):
 
     # Retrieve hyperparameters from the experiment_vars dictionary
@@ -125,8 +133,6 @@ def run_experiment(experiment, datasets):
    
 
     for s in datasets.keys():
-
-        
 
         results_dict_subset = {}
 
@@ -401,7 +407,7 @@ def main(args):
         experiments = json.load(f)
 
     if index == -1:
-        for exp in range(44,50):
+        for exp in range(100,105): # Faltan exp 99, 100, 104 --> igual hacer for exp in [98, 99, 103]
             experiment = experiments[exp]
             name = experiment['experiment_name']
             print('Running esperiment ', name)
@@ -411,7 +417,22 @@ def main(args):
             data_dir = "./Data/"
             with open(os.path.join(data_dir, data+'.pkl'), 'rb') as fp:
                 sets = pickle.load(fp)
+            print('Data found')
 
+            num_trials = experiment['num_trials']
+
+            # Either keep only a number of trials from the dataset or make sure baseline is the first task
+            sets = create_sets(sets, num_trials)
+            # Save the data to understand which experiment was run
+            path_to_save_data = os.path.join(data_dir, data+'_'+str(num_trials)+'trials.pkl')
+            # Pickle the data and save it to file
+            with open(path_to_save_data, 'wb') as handle:
+                pickle.dump(sets, handle, protocol=4)
+
+            print("Saving data...")
+  
+            # Now running experiment on the desired trial number
+            print('Running experiment...')
             results_dict = run_experiment(experiment, sets)
 
             path_to_results = os.path.join('.','Results')
@@ -435,6 +456,19 @@ def main(args):
         with open(os.path.join(data_dir, data+'.pkl'), 'rb') as fp:
             sets = pickle.load(fp)
 
+        num_trials = experiment['num_trials']
+        # Either keep only a number of trials from the dataset or make sure baseline is the first task
+        sets = create_sets(sets, num_trials)
+        # Save the data to understand which experiment was run
+        path_to_save_data = os.path.join(data_dir, data+'_'+str(num_trials)+'trials.pkl')
+        # Pickle the data and save it to file
+        with open(path_to_save_data, 'wb') as handle:
+            pickle.dump(sets, handle, protocol=4)
+
+        print("Saving data...")
+
+        # Now running experiment on the desired trial number
+        print('Running experiment...')
         results_dict = run_experiment(experiment, sets)
 
         path_to_results = os.path.join('.','Results')

@@ -159,6 +159,7 @@ def main(args):
 
     with open(data_path, 'rb') as file:
         tidy_df = pickle.load(file)
+        
     baseline_df = tidy_df.loc[tidy_df['epoch'] == 'BL']
 
     sim_data = generate_data(baseline_df, fold, num_trials)

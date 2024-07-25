@@ -270,7 +270,7 @@ def main(args):
         experiments = json.load(f)
 
     if index == -1:
-        for exp in range(44,50):
+        for exp in range(91,93):
             experiment = experiments[exp]
             name = experiment['experiment_name']
             print('Running esperiment ', name)
