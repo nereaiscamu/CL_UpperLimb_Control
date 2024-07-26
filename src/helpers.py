@@ -712,9 +712,9 @@ def eval_model(xx_train, yy_train, xx_val, yy_val, xx_test, yy_test, model, metr
         ev_train = explained_variance_score(y_true_train, y_pred_train)
         ev_val = explained_variance_score(y_true_val, y_pred_val)
         ev_test = explained_variance_score(y_true_test, y_pred_test)
-        print('Train EV: %.2f ' % (ev_train))
-        print('Val EV: %.2f ' % (ev_val))
-        print('Test EV: %.2f ' % (ev_test))
+        #print('Train EV: %.2f ' % (ev_train))
+        #print('Val EV: %.2f ' % (ev_val))
+        #print('Test EV: %.2f ' % (ev_test))
         return y_pred_test, y_true_test, ev_train, ev_val, ev_test
     
     elif metric == 'r2':
@@ -722,9 +722,9 @@ def eval_model(xx_train, yy_train, xx_val, yy_val, xx_test, yy_test, model, metr
         ev_train = r2_score(y_true_train, y_pred_train)
         ev_val = r2_score(y_true_val, y_pred_val)
         ev_test = r2_score(y_true_test, y_pred_test)
-        print('Train R2: %.2f ' % (ev_train))
-        print('Val R2: %.2f ' % (ev_val))
-        print('Test R2: %.2f ' % (ev_test))
+        #print('Train R2: %.2f ' % (ev_train))
+        #print('Val R2: %.2f ' % (ev_val))
+        #print('Test R2: %.2f ' % (ev_test))
         return y_pred_test, y_true_test, ev_train, ev_val, ev_test
 
 

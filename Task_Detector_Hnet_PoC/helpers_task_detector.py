@@ -3,6 +3,14 @@ import numpy as np
 import os
 import sys
 import torch
+import pandas as pd
+
+sys.path.append('../')
+from Models.models import *
+from src.helpers import *
+from src.visualize import *
+from src.trainer import *
+from src.trainer_hnet import * 
 
 # Generate simulated perturbed neural data
 
@@ -132,6 +140,41 @@ def shuffle_sets(datasets):
 
 # Result Analysis helper functions
 
+def set_plot_style():
+    # Define the custom color palette
+    custom_palette = [
+        '#5F9EA0', # cadet blue
+        '#FFD700', # gold
+        '#FFA07A', # light salmon
+        '#87CEEB', # light blue
+        '#9370DB', # medium purple
+        '#98FB98'  # pale green
+    ]
+    
+    # Set the Seaborn palette
+    sns.set_palette(custom_palette)
+    
+    # Set general plot aesthetics
+    sns.set_context("notebook", font_scale=1.2)
+    sns.set_style("whitegrid")
+
+    # Update Matplotlib rcParams for consistent styling
+    plt.rcParams.update({
+        'figure.figsize': (12, 7),
+        'axes.titlesize': 16,
+        'axes.labelsize': 14,
+        'xtick.labelsize': 12,
+        'ytick.labelsize': 12,
+        'legend.title_fontsize': 13,
+        'legend.fontsize': 11,
+        'axes.titlepad': 20,
+        'axes.labelpad': 10,
+        'xtick.major.pad': 5,
+        'ytick.major.pad': 5
+    })
+
+
+
 def true_task_dict(data):
     max_id = 0
     found_ids = []
@@ -149,7 +192,7 @@ def true_task_dict(data):
     return true_task_map
 
 
-def build_result_df(results, data):
+def build_result_df(results, data, EWC = False):
     dataset = []
     r2_test_detector = []
     r2_test_hnet = []
@@ -168,7 +211,8 @@ def build_result_df(results, data):
 
     for set in results.keys():
         dataset.append(set)
-        r2_test_detector.append(results[set]['r2_test_detector'])
+        if not EWC:
+            r2_test_detector.append(results[set]['r2_test_detector'])
         r2_test_hnet.append(results[set]['r2_test_hnet'])
         predicted_task.append(results[set]['predicted_task'])
         new_task.append(results[set]['new_task'])
@@ -182,8 +226,9 @@ def build_result_df(results, data):
             y_pred_hnet.append([0])
             
         if 'y_true_detector' in results[set].keys():
-            y_true_detector.append([results[set]['y_true_detector']])
-            y_pred_detector.append([results[set]['y_pred_detector']])
+            if not EWC:
+                y_true_detector.append([results[set]['y_true_detector']])
+                y_pred_detector.append([results[set]['y_pred_detector']])
             train_loss.append([results[set]['hnet_train_losses']])
             val_loss.append([results[set]['hnet_val_losses']])
         else:
@@ -191,32 +236,52 @@ def build_result_df(results, data):
             y_pred_detector.append([0])
             train_loss.append([0])
             val_loss.append([0])
-
-    df = pd.DataFrame({'Dataset':dataset,
+    if EWC:
+        df = pd.DataFrame({'Dataset':dataset,
                    'True_Task': true_task,
                    'Predicted_Task' : predicted_task,
                    'New_Task': new_task, 
-                    'Y_t_detector': y_true_detector,
-                    'Y_p_detector':y_pred_detector,  
-                    'R2_Detector':r2_test_detector,
                     'Y_t_hnet': y_true_hnet,
                     'Y_p_hnet':y_pred_hnet,  
                     'R2_hnet':r2_test_hnet, 
                     'HNET_training_loss': train_loss,
                     'HNET_val_loss': val_loss})
+
+    else:
+
+        df = pd.DataFrame({'Dataset':dataset,
+                    'True_Task': true_task,
+                    'Predicted_Task' : predicted_task,
+                    'New_Task': new_task, 
+                        'Y_t_detector': y_true_detector,
+                        'Y_p_detector':y_pred_detector,  
+                        'R2_Detector':r2_test_detector,
+                        'Y_t_hnet': y_true_hnet,
+                        'Y_p_hnet':y_pred_hnet,  
+                        'R2_hnet':r2_test_hnet, 
+                        'HNET_training_loss': train_loss,
+                        'HNET_val_loss': val_loss})
     return df
 
 
-def build_catas_forg_df(results, data, models, experiment_name):
+def build_catas_forg_df(results, data, models, experiment_name, model_type = 'HNET'):
     model = []
     test_set = []
     r2_list = []
     data_name = []
 
-    df  = build_result_df(results, data)
+    if model_type == 'HNET':
+        path_to_models = './Models/Models_HNET'
+        df  = build_result_df(results, data)
+    elif model_type == 'EWC':
+        path_to_models = './Models/Models_EWC'
+        df  = build_result_df(results, data, EWC = True)
+    elif model_type == 'FT':
+        path_to_models = './Models/Models_FT'
+        df  = build_result_df(results, data, EWC = True)
     
     for i,m in enumerate(models):
-        model_i = torch.load(os.path.join(path_to_hnets,experiment_name, m))
+        model_i = torch.load(os.path.join(path_to_models,experiment_name, m))
         for task,set in zip(df.True_Task, df.Dataset):
             perturbed_task = set.split('_')[1]
 
@@ -232,18 +297,32 @@ def build_catas_forg_df(results, data, models, experiment_name):
                 name = 'Offset'
 
             pred_task = df.loc[df.Dataset == set].Predicted_Task.values
-                
-            if int(pred_task) <= i :
-                W = model_i(cond_id = int(pred_task))
-                main_net = RNN_Main_Model(num_features= 130, hnet_output = W,  hidden_size = 300,
-                                    num_layers= 1,out_dims=2,  
-                                    dropout= 0.2,  LSTM_ = False)
-                x_train, y_train, x_val, y_val, x_test, y_test = data[set]
-                r2, _ = calc_explained_variance_mnet(x_test, y_test, W, main_net)
-                model.append(m)
-                test_set.append(set)
-                r2_list.append(r2)
-                data_name.append(name)    
+            x_train, y_train, x_val, y_val, x_test, y_test = data[set]
+
+            if model_type == 'HNET': 
+                if int(pred_task) <= i :
+                    W = model_i(cond_id = int(pred_task))
+                    main_net = RNN_Main_Model(num_features= 130, hnet_output = W,  hidden_size = 300,
+                                        num_layers= 1,out_dims=2,  
+                                        dropout= 0.2,  LSTM_ = False)
+                    
+                    r2, _ = calc_explained_variance_mnet(x_test, y_test, W, main_net)
+                    model.append(m)
+                    test_set.append(set)
+                    r2_list.append(r2)
+                    data_name.append(name)    
+            else:
+                if int(pred_task) <= i :
+                    y_hat, y_true,train_score, v_score, test_score = eval_model( x_train, y_train,
+                                                                        x_val, y_val,
+                                                                        x_test, y_test, 
+                                                                        model_i, 
+                                                                        metric = 'r2')                         
+                    model.append(m)
+                    test_set.append(set)
+                    r2_list.append(test_score)
+                    data_name.append(name)
+
 
     df_plot = pd.DataFrame({ 'Model':model,
                         'Name' : data_name,
@@ -274,4 +353,34 @@ def plot_catas_forg(df_plot):
     plt.legend(title='Dataset', bbox_to_anchor=(1.05, 0.75), loc='upper left')
     plt.tight_layout()
     plt.ylim([0.5,0.9])
+    plt.show()
+
+def plot_learning_curves(df_hnet, df_control):
+
+    # Apply the general plot style
+    set_plot_style()
+
+    fig, axes = plt.subplots(1, 5, figsize=(20, 10), sharey=True)
+
+    colors = {
+        "Training Loss": "#ADD8E6",  # lightblue
+        "Validation Loss": "#00008B",  # darkblue
+        "Training Loss Control": "#FFA07A",  # lightorange
+        "Validation Loss Control": "#FF8C00"  # darkorange
+    }
+
+    for idx, row in df_hnet.iterrows():
+        dataset = row.Dataset
+        row_control = df_control.loc[df_control.Dataset == dataset]
+        axes[idx].plot(row['HNET_training_loss'][0], label='Training Loss', color=colors['Training Loss'])
+        axes[idx].plot(row_control['HNET_training_loss'].values[0][0], label='Training Loss Control', color=colors['Training Loss Control'])
+        axes[idx].plot(row['HNET_val_loss'][0], label='Validation Loss', color=colors['Validation Loss'])
+        axes[idx].plot(row_control['HNET_val_loss'].values[0][0], label='Validation Loss Control', color=colors['Validation Loss Control'])
+        axes[idx].set_title(f'Task {idx + 1} ({row["Dataset"]})')
+        axes[idx].set_xlabel('Epoch')
+        if idx == 0:
+            axes[idx].set_ylabel('Loss')
+        axes[idx].legend()
+
+    plt.tight_layout()
     plt.show()
