@@ -50,7 +50,7 @@ torch.cuda.manual_seed(seed_value)  # If using CUDA
 # Define hyperparameters
 
 
-results_dict = {}
+
 
 
 def create_sets(datasets, num_trials):
@@ -131,6 +131,7 @@ def run_experiment(experiment, datasets):
   
     calc_reg = False
    
+    results_dict = {}
 
     for s in datasets.keys():
 
@@ -401,13 +402,14 @@ def run_experiment(experiment, datasets):
 def main(args):
 
     index = args.index
+    sort = bool(args.sort)
 
     # Load the list of experiments from JSON
     with open(os.path.join('config.json'), 'r') as f:
         experiments = json.load(f)
 
     if index == -1:
-        for exp in range(100,105): # Faltan exp 99, 100, 104 --> igual hacer for exp in [98, 99, 103]
+        for exp in range(122,128): 
             experiment = experiments[exp]
             name = experiment['experiment_name']
             print('Running esperiment ', name)
@@ -419,17 +421,18 @@ def main(args):
                 sets = pickle.load(fp)
             print('Data found')
 
-            num_trials = experiment['num_trials']
+            if sort:
+                print('Sorting the data')
+                num_trials = experiment['num_trials']
+                # Either keep only a number of trials from the dataset or make sure baseline is the first task
+                sets = create_sets(sets, num_trials)
+                # Save the data to understand which experiment was run
+                path_to_save_data = os.path.join(data_dir, data+'_'+str(num_trials)+'trials.pkl')
+                # Pickle the data and save it to file
+                with open(path_to_save_data, 'wb') as handle:
+                    pickle.dump(sets, handle, protocol=4)
 
-            # Either keep only a number of trials from the dataset or make sure baseline is the first task
-            sets = create_sets(sets, num_trials)
-            # Save the data to understand which experiment was run
-            path_to_save_data = os.path.join(data_dir, data+'_'+str(num_trials)+'trials.pkl')
-            # Pickle the data and save it to file
-            with open(path_to_save_data, 'wb') as handle:
-                pickle.dump(sets, handle, protocol=4)
-
-            print("Saving data...")
+                print("Saving data...")
   
             # Now running experiment on the desired trial number
             print('Running experiment...')
@@ -456,16 +459,18 @@ def main(args):
         with open(os.path.join(data_dir, data+'.pkl'), 'rb') as fp:
             sets = pickle.load(fp)
 
-        num_trials = experiment['num_trials']
-        # Either keep only a number of trials from the dataset or make sure baseline is the first task
-        sets = create_sets(sets, num_trials)
-        # Save the data to understand which experiment was run
-        path_to_save_data = os.path.join(data_dir, data+'_'+str(num_trials)+'trials.pkl')
-        # Pickle the data and save it to file
-        with open(path_to_save_data, 'wb') as handle:
-            pickle.dump(sets, handle, protocol=4)
+        if sort:
+                print('Sorting the data')
+                num_trials = experiment['num_trials']
+                # Either keep only a number of trials from the dataset or make sure baseline is the first task
+                sets = create_sets(sets, num_trials)
+                # Save the data to understand which experiment was run
+                path_to_save_data = os.path.join(data_dir, data+'_'+str(num_trials)+'trials.pkl')
+                # Pickle the data and save it to file
+                with open(path_to_save_data, 'wb') as handle:
+                    pickle.dump(sets, handle, protocol=4)
 
-        print("Saving data...")
+                print("Saving data...")
 
         # Now running experiment on the desired trial number
         print('Running experiment...')
@@ -493,6 +498,13 @@ if __name__ == "__main__":
         type=int,
         default=0,
         help="Index to iterate over the dictionary",
+    )
+
+    parser.add_argument(
+        "--sort",
+        type=int,
+        default=0,
+        help="If data needs to be sorted to get the baseline first",
     )
 
     args = parser.parse_args()

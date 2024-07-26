@@ -2546,7 +2546,668 @@
         "beta_hnet_reg" : 0.1,
         "thrs" : 0.8
     }
+    , 
+
+    {
+        "experiment_name": "Experiment105", 
+        "data": "Sim_Data_Experiment61",
+        "num_trials": 1, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[50,50],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 0.1,
+        "thrs" : 0.8
+    }
+
+    ,
     
+
+    {
+        "experiment_name": "Experiment106", 
+        "data": "Sim_Data_Experiment61",
+        "num_trials": 5, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[50,50],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 0.1,
+        "thrs" : 0.8
+    }
+
+    ,
+    
+
+    {
+        "experiment_name": "Experiment107", 
+        "data": "Sim_Data_Experiment61",
+        "num_trials": 10, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[50,50],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 0.1,
+        "thrs" : 0.8
+    }
+
+    ,
+    
+
+    {
+        "experiment_name": "Experiment108", 
+        "data": "Sim_Data_Experiment61",
+        "num_trials": 15, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[50,50],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 0.1,
+        "thrs" : 0.8
+    }
+
+    ,
+    
+
+    {
+        "experiment_name": "Experiment109", 
+        "data": "Sim_Data_Experiment61",
+        "num_trials": 20, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[50,50],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 0.1,
+        "thrs" : 0.8
+    }
+
+    ,
+    
+
+    {
+        "experiment_name": "Experiment110", 
+        "data": "Sim_Data_Experiment61",
+        "num_trials": 25, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[50,50],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 0.1,
+        "thrs" : 0.8
+    }
+
+    ,
+    
+
+    {
+        "experiment_name": "Experiment111", 
+        "data": "Sim_Data_Experiment61",
+        "num_trials": 30, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[50,50],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 0.1,
+        "thrs" : 0.8
+    }
+
+    ,
+    
+
+    {
+        "experiment_name": "Experiment112", 
+        "data": "Sim_Data_Experiment61",
+        "num_trials": 35, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[50,50],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 0.1,
+        "thrs" : 0.8
+    }
+
+    ,
+    
+
+    {
+        "experiment_name": "Experiment113", 
+        "data": "Sim_Data_Experiment61",
+        "num_trials": 40, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[50,50],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 0.1,
+        "thrs" : 0.8
+    }
+
+    ,
+    
+
+    {
+        "experiment_name": "Experiment114", 
+        "data": "Sim_Data_Experiment61",
+        "num_trials": 45, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[50,50],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 0.1,
+        "thrs" : 0.8
+    }
+
+    ,
+    
+
+    {
+        "experiment_name": "Experiment115", 
+        "data": "Sim_Data_Experiment61",
+        "num_trials": 50, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[50,50],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 0.1,
+        "thrs" : 0.8
+    }
+    ,
+    {
+        "experiment_name": "Experiment116", 
+        "data": "Sim_Data_Experiment61",
+        "num_trials": -1, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[50,50],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 0.1,
+        "thrs" : 0.8
+    }
+    , 
+
+    {
+        "experiment_name": "Experiment117", 
+        "data": "Sim_Data_Experiment62",
+        "num_trials": 1, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[50,50],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 0.1,
+        "thrs" : 0.8
+    }
+
+    ,
+    
+
+    {
+        "experiment_name": "Experiment118", 
+        "data": "Sim_Data_Experiment62",
+        "num_trials": 5, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[50,50],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 0.1,
+        "thrs" : 0.8
+    }
+
+    ,
+    
+
+    {
+        "experiment_name": "Experiment119", 
+        "data": "Sim_Data_Experiment62",
+        "num_trials": 10, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[50,50],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 0.1,
+        "thrs" : 0.8
+    }
+
+    ,
+    
+
+    {
+        "experiment_name": "Experiment120", 
+        "data": "Sim_Data_Experiment62",
+        "num_trials": 15, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[50,50],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 0.1,
+        "thrs" : 0.8
+    }
+
+    ,
+    
+
+    {
+        "experiment_name": "Experiment121", 
+        "data": "Sim_Data_Experiment62",
+        "num_trials": 20, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[50,50],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 0.1,
+        "thrs" : 0.8
+    }
+
+    ,
+    
+
+    {
+        "experiment_name": "Experiment122", 
+        "data": "Sim_Data_Experiment62",
+        "num_trials": 25, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[50,50],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 0.1,
+        "thrs" : 0.8
+    }
+
+    ,
+    
+
+    {
+        "experiment_name": "Experiment123", 
+        "data": "Sim_Data_Experiment62",
+        "num_trials": 30, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[50,50],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 0.1,
+        "thrs" : 0.8
+    }
+
+    ,
+    
+
+    {
+        "experiment_name": "Experiment124", 
+        "data": "Sim_Data_Experiment62",
+        "num_trials": 35, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[50,50],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 0.1,
+        "thrs" : 0.8
+    }
+
+    ,
+    
+
+    {
+        "experiment_name": "Experiment125", 
+        "data": "Sim_Data_Experiment62",
+        "num_trials": 40, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[50,50],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 0.1,
+        "thrs" : 0.8
+    }
+
+    ,
+    
+
+    {
+        "experiment_name": "Experiment126", 
+        "data": "Sim_Data_Experiment62",
+        "num_trials": 45, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[50,50],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 0.1,
+        "thrs" : 0.8
+    }
+
+    ,
+    
+
+    {
+        "experiment_name": "Experiment127", 
+        "data": "Sim_Data_Experiment62",
+        "num_trials": 50, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[50,50],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 0.1,
+        "thrs" : 0.8
+    }
+    ,
+    {
+        "experiment_name": "Experiment128", 
+        "data": "Sim_Data_Experiment62",
+        "num_trials": -1, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[50,50],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 0.1,
+        "thrs" : 0.8
+    }
 ]
 
 
