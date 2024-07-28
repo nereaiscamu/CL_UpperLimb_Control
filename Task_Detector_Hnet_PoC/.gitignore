@@ -1,0 +1,11 @@
+# Ignore Python cache files
+__pycache__/
+*.pyc
+
+# Ignore all .pkl files
+*.pkl
+
+# Ignore all .pth files
+*.pth
+
+# Other rules can be added below
