@@ -12,6 +12,11 @@ from src.visualize import *
 from src.trainer import *
 from src.trainer_hnet import * 
 
+
+import plotly.express as px
+import pickle
+
+
 # Generate simulated perturbed neural data
 
 def remove_neurons(matrix, ratio):
@@ -384,3 +389,372 @@ def plot_learning_curves(df_hnet, df_control):
 
     plt.tight_layout()
     plt.show()
+
+
+
+def plot_comparison(df):
+
+    # Melting the DataFrame to have a suitable format for plotting
+    df_melted = df.melt(id_vars=['Name'], value_vars=['HNET', 'HNET During', 'Single Task Model', 'EWC Model', 'FT Model'],
+                        var_name='Model', value_name='R2_Score')
+
+    custom_colors = [
+        '#87CEEB', # light blue
+        '#FFA07A', # light salmon (orange)
+        '#9370DB', # medium purple
+        '#FF69B4', # hot pink
+        '#20908d', # teal   
+    ]
+    set_plot_style()
+
+    # Creating the bar plot
+    fig = px.bar(
+        df_melted,
+        x='Name',
+        y='R2_Score',
+        color='Model',
+        barmode='group',
+        title='Comparison of R² Scores for Different Models per Task',
+        labels={'Name': 'Task Name', 'R2_Score': 'R² Score'},
+        color_discrete_sequence=custom_colors #px.colors.qualitative.Set1
+    )
+
+    # Updating layout for better aesthetics
+    fig.update_layout(
+        title={'text': 'Comparison of R² Scores for Different Models per Task', 'x': 0.5, 'xanchor': 'center'},
+        xaxis_title='Task Name',
+        yaxis_title='R² Score',
+        legend_title='Model',
+        template='plotly_white',
+        width=900,  # Adjust width as needed
+        height=600,  # Adjust height as needed
+        font=dict(size=15)  # Adjust font size as needed
+    )
+
+    # Setting y-axis limits
+    fig.update_yaxes(range=[-0.2, 0.9])
+
+    # Display the plot
+    fig.show()
+
+def plot_order_heatmap(df):
+    # Pivot the dataframe for heatmap
+    heatmap_data = df.pivot_table(index="Second Trained Task", columns="Third Trained Task", values="R2 Third Task")
+
+    # Generate the heatmap with enhanced styling
+    plt.figure(figsize=(8, 6))
+
+    sns.set(font_scale=1.2)  # Increase the font size
+    heatmap = sns.heatmap(heatmap_data, annot=True, cmap="coolwarm", fmt=".2f", linewidths=.5, cbar_kws={'label': 'R2 Value'})
+
+    # Customize the heatmap for better appearance
+    plt.title('Heatmap of R2 Values', fontsize=18)
+    plt.xlabel('Third Trained Task', fontsize=14)
+    plt.ylabel('Second Trained Task', fontsize=14)#, weight='bold')
+
+    # Improve tick label appearance
+    plt.xticks(rotation=45, ha='right', fontsize=12)
+    plt.yticks(rotation=0, fontsize=12)
+
+    # Adjust color bar
+    cbar = heatmap.collections[0].colorbar
+    cbar.ax.tick_params(labelsize=12)
+
+    # Show the heatmap
+    plt.tight_layout()
+    plt.show()
+
+###############3
+####### Functions to determine the minimal trial num
+
+def create_task_map(data):
+    found_ids = []
+    max_id = 0
+    true_task_map = {}
+    for d in data.keys():
+        new_id = d.split('_')[1]
+        if new_id not in found_ids:
+            found_ids.append(new_id)
+            true_task_map[d] = max_id
+            max_id += 1
+        else:
+            idx_id = found_ids.index(new_id)
+            true_task_map[d] = idx_id
+    return true_task_map
+
+
+def create_table_results(experiment_name, exp_num_trials):
+    dataset = []
+    r2_test_detector = []
+    r2_test_hnet = []
+    y_true_detector = []
+    y_pred_detector = []
+    y_true_hnet = []
+    y_pred_hnet = []
+    predicted_task = []
+    new_task = []
+    true_task = []
+
+    path_results = './Results/' + experiment_name
+    
+    with open(os.path.join(path_results +'.pkl'), 'rb') as fp:
+        results = pickle.load(fp)
+    
+    num_trials = exp_num_trials[experiment_name]
+    
+    if experiment_name == 'Experiment76':
+        data_path = './Data/Sim_Data_Experiment60_sorted.pkl'
+    elif experiment_name == 'Experiment116':
+        data_path = './Data/Sim_Data_Experiment61_-1trials.pkl'
+    elif experiment_name == 'Experiment128':
+        data_path = './Data/Sim_Data_Experiment61_-1trials.pkl'
+    else:
+        data_path = './Data/Sim_Data_Experiment61_'+ str(num_trials)+'trials.pkl'
+        
+    with open(os.path.join(data_path), 'rb') as fp:
+        data = pickle.load(fp)
+        
+    true_task_map = create_task_map(data)
+    
+    for set in results.keys():
+        dataset.append(set)
+        r2_test_detector.append(results[set]['r2_test_detector'])
+        r2_test_hnet.append(results[set]['r2_test_hnet'])
+        predicted_task.append(results[set]['predicted_task'])
+        new_task.append(results[set]['new_task'])
+        true_task.append(true_task_map[set])
+        if 'y_true_hnet' in results[set].keys():
+            y_true_hnet.append([results[set]['y_true_hnet']])
+            y_pred_hnet.append([results[set]['y_pred_hnet']])
+        else:
+            y_true_hnet.append([0])
+            y_pred_hnet.append([0])
+        if 'y_true_detector' in results[set].keys():
+            y_true_detector.append([results[set]['y_true_detector']])
+            y_pred_detector.append([results[set]['y_pred_detector']])
+        else:
+            y_true_detector.append([0])
+            y_pred_detector.append([0])
+        
+    df = pd.DataFrame({'Dataset':dataset,
+                   'True_Task': true_task,
+                   'Predicted_Task' : predicted_task,
+                   'New_Task': new_task, 
+                    'Y_t_detector': y_true_detector,
+                    'Y_p_detector':y_pred_detector,  
+                    'R2_Detector':r2_test_detector,
+                    'Y_t_hnet': y_true_hnet,
+                    'Y_p_hnet':y_pred_hnet,  
+                    'R2_hnet':r2_test_hnet}) 
+    return df
+
+def average_results(exp_num_trials):
+    
+    num_trials = []
+    acc_detector = []
+    r2_detector = []
+    for exp in exp_num_trials.keys():
+        df = create_table_results(exp, exp_num_trials)
+        num_trials.append(exp_num_trials[exp])
+        r2_detector.append(df.R2_Detector.mean())
+        acc_detector.append((np.sum(df.True_Task == df.Predicted_Task)*10))
+    df = pd.DataFrame({'Number Trials':num_trials,
+                    'Accuracy Task Detector': acc_detector,
+                    'R2 Task Detector' : r2_detector,
+                    }) 
+    df = df.sort_values(by = 'Number Trials')
+
+    return df
+
+def build_df_exp3(experiment_name, data):
+
+    _,_,_,_,x_test_task2, y_test_task2 = data['Data_4_1']
+    _,_,_,_,x_test_task1, y_test_task1 = data['Data_2_2']
+    _,_,_,_,x_test_task4, y_test_task4 = data['Data_1_2']
+    _,_,_,_,x_test_task3, y_test_task3 = data['Data_3_1']
+    _,_,_,_,x_test_task0, y_test_task0 = data['Data_0_1']
+
+    X = [x_test_task0, x_test_task1, x_test_task2, x_test_task3, x_test_task4]
+    Y = [y_test_task0, y_test_task1, y_test_task2, y_test_task3, y_test_task4]
+
+    task_ids = []
+    random_trials = []
+    r2_list = []
+    true_ids = []
+    num_trials = []
+
+    num_trials_ = [1,2,4,6,8,10,12,14,16,17]
+    path_to_detectors ='./Models/Models_Task_Recognition'
+    models_exp = np.sort(os.listdir(os.path.join(path_to_detectors, experiment_name)))
+    thrs = 0.8
+
+    true_id = 0
+    for feats, targs in zip(X,Y):
+        for n in num_trials_:
+            for t in range(10):
+                trials = random.sample(range(17),n)
+                x, y = feats[trials, :,:], targs[trials, :,:]
+                r2_task = []
+                for m in (models_exp):
+                    model_i = torch.load(os.path.join(path_to_detectors, experiment_name, m))
+                    y_true_test, y_pred_test = reshape_to_eval(x, y, model_i)
+                    r2_task.append(r2_score(y_true_test, y_pred_test))
+                max_r2 = max(r2_task)
+                r2_list.append(max_r2)
+                task_id = None
+                if max_r2 > thrs:
+                    task_id = np.argmax(r2_task)
+                task_ids.append(task_id)
+                random_trials.append(t)
+                num_trials.append(n)
+                true_ids.append(true_id)
+        true_id += 1
+    df = pd.DataFrame({"Trial":random_trials, "Num Trials": num_trials, 
+                        "True Task": true_ids, 
+                        "Predicted Task" : task_ids,
+                        "R2":r2_list })
+    return df
+
+
+def plot_min_trial_leaning(df):
+    # Initialize the seaborn style
+    sns.set_style("whitegrid")
+
+    # Create the plot
+    fig, ax1 = plt.subplots(figsize=(10, 6))
+
+    # Plot the accuracy on the primary y-axis
+    sns.lineplot(data=df, x='Number Trials', y='Accuracy Task Detector', ax=ax1, marker='o', color='b')
+    ax1.set_ylabel('Accuracy', color='b')
+
+    # Create the secondary y-axis
+    ax2 = ax1.twinx()
+    sns.lineplot(data=df, x='Number Trials', y='R2 Task Detector', ax=ax2, marker='x', color='r')
+    ax2.set_ylabel('R2 Score', color='r')
+
+    # Add title
+    plt.title('Accuracy and R2 Score vs. Number of Trials')
+
+    # Show plot
+    plt.show()
+
+
+def plot_min_trial_infer(df):
+    # Initialize the seaborn style
+    sns.set_style("whitegrid")
+
+    # Create the plot
+    fig, ax1 = plt.subplots(figsize=(10, 6))
+
+    # Plot the accuracy on the primary y-axis
+    sns.lineplot(data=df, x='Num Trials', y='Accuracy', ax=ax1, marker='o', color='b')
+    ax1.set_ylabel('Accuracy', color='b')
+
+    # Create the secondary y-axis
+    ax2 = ax1.twinx()
+    sns.lineplot(data=df, x='Num Trials', y='R2', ax=ax2, marker='x', color='r')
+    ax2.set_ylabel('R2 Score', color='r')
+
+    # Add title
+    plt.title('Accuracy and R2 Score vs. Number of Trials')
+    #plt.ylim([0.5,1])
+
+    # Show plot
+    plt.show()
+
+
+#######################
+#### Computing forward transfer
+
+def calculate_fwt(accuracies_CL, accuracies_control):
+    k = len(accuracies_control)
+    fwt_sum = 0.0
+    
+    for j in range(1, k):  # Start from 1 because we need j=2 to k
+        fwt_sum += accuracies_CL[j] - accuracies_control[j]
+        
+    fwt = fwt_sum / (k - 1)
+    return fwt
+
+
+from hypnettorch.hnets import HMLP
+
+def create_table_FWT(df, experiment_name, data):
+    model = []
+    test_set = []
+    r2_list = []
+    data_name = []
+    r2_random_mod = []
+    path_to_models = './Models/Models_HNET'
+    models_exp = np.sort(os.listdir(os.path.join(path_to_models, experiment_name)))
+    for i,m in enumerate(models_exp):
+        model_i = torch.load(os.path.join(path_to_models,experiment_name, m))
+        for task,set in zip(df.True_Task, df.Dataset):
+            perturbed_task = set.split('_')[1]
+
+            if perturbed_task == '0':
+                name = 'Baseline'
+            elif perturbed_task == '1':
+                name = 'Removed Neurons'    
+            elif perturbed_task == '2':
+                name = 'Shuffled Neurons'
+            elif perturbed_task == '3':
+                name = 'Gain' 
+            elif perturbed_task == '4':
+                name = 'Offset'
+
+            pred_task = df.loc[df.Dataset == set].Predicted_Task.values
+
+
+            if int(pred_task) == (i+1):
+                W = model_i(cond_id = int(pred_task))
+                main_net = RNN_Main_Model(num_features= 130, hnet_output = W,  hidden_size = 300,
+                                    num_layers= 1,out_dims=2,  
+                                    dropout= 0.2,  LSTM_ = False)
+                x_train, y_train, x_val, y_val, x_test, y_test = data[set]
+                r2, _ = calc_explained_variance_mnet(x_test, y_test, W, main_net)
+                model.append(m)
+                test_set.append(set)
+                r2_list.append(r2)
+                data_name.append(name)    
+
+                #########################
+                ### Now define a random model and compute the R2 before training for each task
+                #########################
+                
+                ####### Define task detector model
+                task_detector_model =  Causal_Simple_RNN(num_features=130, 
+                                hidden_units= 300, 
+                                num_layers = 1, 
+                                out_dims = 2,
+                                dropout = 0.2).to(device)
+        
+
+                #### Defining the template, main and hnet models and initializing them
+                
+                # We can use the task detector as a template for the main model
+                param_shapes = [p.shape for p in list(task_detector_model.parameters())]
+
+                num_conditions = 60 # we want more possible conditions than what we can reach
+                size_task_embedding = 8 # seemed to work well 
+
+                hnet = HMLP(param_shapes, uncond_in_size=0,
+                    cond_in_size=size_task_embedding,
+                    layers=[13], 
+                    num_cond_embs=num_conditions).to(device)
+
+                for param in hnet.parameters():
+                    param.requires_grad = True
+
+                W_random = hnet(cond_id = int(pred_task))
+                r2_random, _ = calc_explained_variance_mnet(x_test, y_test, W_random, main_net)
+                r2_random_mod.append(r2_random)
+
+    df_forward_trans = pd.DataFrame({ 'Model':model,
+                    'Name' : data_name,
+                    'Dataset':test_set,
+                    'R2_CL': r2_list,
+                    'R2_Random': r2_random_mod})
+    
+    return df_forward_trans
+
