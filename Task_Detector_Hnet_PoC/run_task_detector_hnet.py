@@ -30,7 +30,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.abspath(os.path.join(current_dir, '..',))
 sys.path.append(parent_dir)
 print(sys.path)
-from src.trainer import *
+from src.trainer_hnet_context_infer import *
 from src.helpers import *
 from src.trainer_hnet import * 
 from Models.models import *
@@ -46,19 +46,6 @@ dtype = torch.float32
 seed_value = 42
 torch.manual_seed(seed_value)
 torch.cuda.manual_seed(seed_value)  # If using CUDA
-
-# Define hyperparameters
-
-
-
-
-
-def create_sets(datasets, num_trials):
-    red_sets = get_reduced_sets(datasets, num_trials)
-    shuffled_sets = shuffle_sets(red_sets)
-    sorted_data = ensure_baseline_first(shuffled_sets)
-    return sorted_data
-
 
 def run_experiment(experiment, datasets):
 

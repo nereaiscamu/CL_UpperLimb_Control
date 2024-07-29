@@ -141,6 +141,13 @@ def shuffle_sets(datasets):
     return shuffled_sets
 
 
+def create_sets(datasets, num_trials):
+    red_sets = get_reduced_sets(datasets, num_trials)
+    shuffled_sets = shuffle_sets(red_sets)
+    sorted_data = ensure_baseline_first(shuffled_sets)
+    return sorted_data
+
+
 #######################
 
 # Result Analysis helper functions
