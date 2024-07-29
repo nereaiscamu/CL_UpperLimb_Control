@@ -268,6 +268,20 @@ def build_result_df(results, data, EWC = False):
                         'HNET_val_loss': val_loss})
     return df
 
+def add_name_from_dataset(x):
+    perturbed_task = x.split('_')[1]
+    if perturbed_task == '0':
+        name = 'Baseline'
+    elif perturbed_task == '1':
+        name = 'Removed Neurons'    
+    elif perturbed_task == '2':
+        name = 'Shuffled Neurons'
+    elif perturbed_task == '3':
+        name = 'Gain' 
+    elif perturbed_task == '4':
+        name = 'Offset'
+    return name
+
 
 def build_catas_forg_df(results, data, models, experiment_name, model_type = 'HNET'):
     model = []
@@ -355,7 +369,7 @@ def plot_catas_forg(df_plot):
 
     plt.xticks(ticks=range(len(new_labels)), labels=new_labels)
     plt.yticks(fontsize = 12)
-    plt.legend(title='Dataset', bbox_to_anchor=(1.05, 0.75), loc='upper left')
+    plt.legend(title='Model',  loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=3)
     plt.tight_layout()
     plt.ylim([0.5,0.9])
     plt.show()
@@ -365,18 +379,23 @@ def plot_learning_curves(df_hnet, df_control):
     # Apply the general plot style
     set_plot_style()
 
-    fig, axes = plt.subplots(1, 5, figsize=(20, 10), sharey=True)
+    fig, axes = plt.subplots(1, 5, figsize=(16, 6), sharey=True)
 
     colors = {
         "Training Loss": "#ADD8E6",  # lightblue
         "Validation Loss": "#00008B",  # darkblue
         "Training Loss Control": "#FFA07A",  # lightorange
-        "Validation Loss Control": "#FF8C00"  # darkorange
+        "Validation Loss Control": "#FF4500"  # orange-red
     }
 
-    for idx, row in df_hnet.iterrows():
+    df_hnet_name = df_hnet.copy()
+    df_control_name = df_control.copy()
+    df_hnet_name['Dataset'] = df_hnet_name['Dataset'].apply(lambda x: add_name_from_dataset(x))
+    df_control_name['Dataset'] = df_control_name['Dataset'].apply(lambda x: add_name_from_dataset(x))
+
+    for idx, row in df_hnet_name.iterrows():
         dataset = row.Dataset
-        row_control = df_control.loc[df_control.Dataset == dataset]
+        row_control = df_control_name.loc[df_control_name.Dataset == dataset]
         axes[idx].plot(row['HNET_training_loss'][0], label='Training Loss', color=colors['Training Loss'])
         axes[idx].plot(row_control['HNET_training_loss'].values[0][0], label='Training Loss Control', color=colors['Training Loss Control'])
         axes[idx].plot(row['HNET_val_loss'][0], label='Validation Loss', color=colors['Validation Loss'])
@@ -390,52 +409,52 @@ def plot_learning_curves(df_hnet, df_control):
     plt.tight_layout()
     plt.show()
 
-
-
 def plot_comparison(df):
+
+    set_plot_style()
 
     # Melting the DataFrame to have a suitable format for plotting
     df_melted = df.melt(id_vars=['Name'], value_vars=['HNET', 'HNET During', 'Single Task Model', 'EWC Model', 'FT Model'],
                         var_name='Model', value_name='R2_Score')
+    
 
+    # Custom colors for the models
     custom_colors = [
-        '#87CEEB', # light blue
-        '#FFA07A', # light salmon (orange)
-        '#9370DB', # medium purple
-        '#FF69B4', # hot pink
-        '#20908d', # teal   
+        '#87CEEB',  # light blue
+        '#FFA07A',  # light salmon (orange)
+        '#9370DB',  # medium purple
+        #'#FF69B4',  # hot pink
+        '#FFB6C1',  #Lavender Blush: #FFF0F5
+        '#20908d'   # teal   
     ]
-    set_plot_style()
+
+    # Setting the plot style
+    #sns.set(style="whitegrid")
 
     # Creating the bar plot
-    fig = px.bar(
-        df_melted,
+    plt.figure(figsize=(10, 6))
+    bar_plot = sns.barplot(
+        data=df_melted,
         x='Name',
         y='R2_Score',
-        color='Model',
-        barmode='group',
-        title='Comparison of R² Scores for Different Models per Task',
-        labels={'Name': 'Task Name', 'R2_Score': 'R² Score'},
-        color_discrete_sequence=custom_colors #px.colors.qualitative.Set1
+        hue='Model',
+        #palette=custom_colors
     )
 
-    # Updating layout for better aesthetics
-    fig.update_layout(
-        title={'text': 'Comparison of R² Scores for Different Models per Task', 'x': 0.5, 'xanchor': 'center'},
-        xaxis_title='Task Name',
-        yaxis_title='R² Score',
-        legend_title='Model',
-        template='plotly_white',
-        width=900,  # Adjust width as needed
-        height=600,  # Adjust height as needed
-        font=dict(size=15)  # Adjust font size as needed
-    )
+    # Adding title and labels
+    bar_plot.set_title('Comparison of R² Scores for Different Models per Task')
+    bar_plot.set_xlabel('Task Name')
+    bar_plot.set_ylabel('R² Score')
+   
+    plt.legend(title='Model',  loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=3)
 
     # Setting y-axis limits
-    fig.update_yaxes(range=[-0.2, 0.9])
+    bar_plot.set(ylim=(-0.2, 0.9))
 
     # Display the plot
-    fig.show()
+    plt.show()
+
+   
 
 def plot_order_heatmap(df):
     # Pivot the dataframe for heatmap
