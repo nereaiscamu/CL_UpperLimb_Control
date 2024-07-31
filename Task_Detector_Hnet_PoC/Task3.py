@@ -4,6 +4,8 @@ import numpy as np
 import pickle
 import json
 import argparse
+import os
+import sys
 
 # Imports DL
 import torch
@@ -18,6 +20,17 @@ from hypnettorch.hnets import HyperNetInterface
 from hypnettorch.hnets import HMLP
 import copy
 import time
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+# Navigate up two levels to reach the grandparent directory (CL Control)
+parent_dir = os.path.abspath(os.path.join(current_dir, '..',))
+sys.path.append(parent_dir)
+print(sys.path)
+from src.trainer_hnet_context_infer import *
+from src.helpers import *
+from Models.models import *
+
+
 
 from helpers_task_detector import *
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -55,7 +68,8 @@ class Run_Experiment_Block3:
         self.size_task_embedding = 24
         self.hnet = self._initialize_hnet()
         self.model = self._initialize_model()
-        self.continual_trainer = ContinualLearningTrainer(self.model, self.hnet, self.num_conditions, self.device)
+        self.n_contexts = 0
+        self.continual_trainer = ContinualLearningTrainer(self.model, self.hnet, self.n_contexts, self.device)
         self.calc_reg = False
     
     def _initialize_hnet(self):
@@ -104,12 +118,12 @@ class Run_Experiment_Block3:
         return y_hat, y_true, train_score, v_score, test_score
 
     def train_hnet(self, x_train, y_train, x_val, y_val, task_id, calc_reg):
-        train_losses, val_losses, best_model = self.continual_trainer.train_current_task(
+        best_model, train_losses, val_losses  = self.continual_trainer.train_current_task(
             y_train, 
             x_train, 
             y_val,
             x_val, 
-            calc_reg=self.calc_reg,
+            calc_reg=calc_reg,
             cond_id=int(task_id),
             lr=self.config.lr_hnet,
             lr_step_size=5,
@@ -117,7 +131,7 @@ class Run_Experiment_Block3:
             sequence_length_LSTM=self.config.seq_length_LSTM,
             batch_size_train=self.config.batch_size_train,
             batch_size_val=self.config.batch_size_train,
-            num_epochs=1000, 
+            num_epochs= 1000, 
             delta=self.config.delta,
             beta=self.config.beta_hnet_reg, 
             regularizer=reg_hnet,
@@ -137,10 +151,13 @@ class Run_Experiment_Block3:
             path_hnet_models = f'./Models/Models_HNET_Block3/{self.config.experiment_name}'
             os.makedirs(path_hnet_models, exist_ok=True)
             start_time = time.time()
+            print(s)
+            if self.continual_trainer.n_contexts >= 1:
+                self.calc_reg = True
+            print(s, 'Calc reg', self.calc_reg)
             self.hnet, train_losses_, val_losses_, = self.train_hnet(x_train, y_train, x_val, y_val, 
                                                                      self.continual_trainer.active_context, 
                                                                      calc_reg=self.calc_reg)
-            print('Active context:' ,self.continual_trainer.active_context)
             print('num contexts:' , self.continual_trainer.n_contexts)
             # Maybe here not pretend all is the same context.
             W_best = self.hnet(cond_id=self.continual_trainer.active_context)

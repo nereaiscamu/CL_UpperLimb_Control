@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import math
 
 from src.regularizers import *
-
+from src.trainer import *
 from src.helpers import * 
 from Models.models import *
 from src.sequence_datasets import * 
@@ -33,12 +33,31 @@ class ContinualLearningTrainer:
         self.confidence_context = [0]
         self.active_context = 0
 
+
     def deviate_from_mean(self, modulation, context):
-        N = 50
-        bar, std = torch.mean(
-            self.context_error[context][-N:-1]
-        ), torch.std(self.context_error[context][-N:-1])
-        return modulation / bar > 1.01
+        N = 60
+        k = 15
+
+        # Ensure the context index is valid
+        if not (0 <= context < len(self.context_error)):
+            raise IndexError(f"Context index {context} is out of range.")
+        
+        context_errors = self.context_error[context]
+        
+        # Compute minimum loss in the last k values
+        min_loss = torch.min(context_errors[-k:-1].min(), modulation)
+        
+        # Compute the mean of the last N values
+        bar = torch.mean(context_errors[-N:-1])
+
+        
+        # Ensure the mean is not zero to avoid division by zero
+        if bar.item() == 0:
+            raise ValueError("Mean value (bar) is zero, cannot divide by zero.")
+        
+        # Return whether the deviation exceeds the threshold
+        return min_loss / bar > 1.1 #1.01
+
 
     def train_current_task(
             self,
@@ -67,12 +86,7 @@ class ContinualLearningTrainer:
         optimizer = torch.optim.Adam(self.hnet.internal_params, lr=lr)
         scheduler = lr_scheduler.StepLR(optimizer, step_size=lr_step_size, gamma=lr_gamma)
 
-        if calc_reg:
-            reg_targets = get_current_targets(cond_id, self.hnet)
-            prev_hnet_theta = None
-            prev_task_embs = None
-
-        best_model_wts = deepcopy(self.model.state_dict())
+        best_model_wts = deepcopy(self.hnet.state_dict())
         best_loss = 1e8
 
         torch.autograd.set_detect_anomaly(True)
@@ -84,18 +98,29 @@ class ContinualLearningTrainer:
         
         train_dataset = SequenceDataset(y_train, x_train, sequence_length=sequence_length_LSTM)
         val_dataset = SequenceDataset(y_val, x_val, sequence_length=sequence_length_LSTM)
-        loader_train = DataLoader(train_dataset, batch_size=batch_size_train, shuffle=True)
-        loader_val = DataLoader(val_dataset, batch_size=batch_size_val, shuffle=True)
+        loader_train = data.DataLoader(train_dataset, batch_size=batch_size_train, shuffle=True)
+        loader_val = data.DataLoader(val_dataset, batch_size=batch_size_val, shuffle=True)
 
         hx = torch.randn(self.model.num_layers, batch_size_train, self.model.hidden_size, device=self.device) * 0.1
 
+        if self.n_contexts == 0:
+            self.n_contexts += 1
+        
+        # if calc_reg and self.active_context > 0:
+        #     reg_targets = get_current_targets(self.active_context, self.hnet)
+        #     prev_hnet_theta = None
+        #     prev_task_embs = None
+
+        prev_hnet = deepcopy(self.hnet)
+
         for epoch in range(num_epochs):
+
             for phase in ['train', 'val']:
                 if phase == 'train':
-                    self.model.train()
+                    self.hnet.train()
                     loader = loader_train
                 else:
-                    self.model.eval()
+                    self.hnet.eval()
                     loader = loader_val
 
                 running_loss = 0
@@ -108,7 +133,6 @@ class ContinualLearningTrainer:
                     if phase == "train":
                         with torch.set_grad_enabled(True):
                             optimizer.zero_grad()
-
                             context = self.active_context
                             self.context_error[self.active_context] = torch.cat(
                                 [self.context_error[self.active_context], self.context_error_0], dim=0
@@ -128,7 +152,10 @@ class ContinualLearningTrainer:
                             y_pred = model(x, hx)
                             loss_task = F.huber_loss(y_pred, y, delta=delta)
 
-                            if calc_reg:
+                            if calc_reg and self.active_context>0:
+                                reg_targets = get_current_targets(self.active_context, prev_hnet)
+                                prev_hnet_theta = None
+                                prev_task_embs = None
                                 loss_reg = calc_fix_target_reg(
                                     self.hnet,
                                     context,
@@ -138,6 +165,7 @@ class ContinualLearningTrainer:
                                     prev_task_embs=prev_task_embs,
                                 )
                                 loss_t = loss_task + beta * loss_reg
+                               
                             else:
                                 loss_t = loss_task 
 
@@ -148,36 +176,43 @@ class ContinualLearningTrainer:
                             optimizer.step()
 
                             modulation = loss_task.detach()
-                            if self.deviate_from_mean(modulation, self.active_context) and self.confidence_context[self.active_context] > 0.9:
-                                reactivation = False
-                                self.new_context = True
-                                for context in range(self.n_contexts):
-                                    W = self.hnet(cond_id=context)
-                                    model = RNN_Main_Model(
-                                        num_features=self.model.num_features, 
-                                        hnet_output=W,  
-                                        hidden_size=self.model.hidden_size,
-                                        num_layers=self.model.num_layers, 
-                                        out_dims=self.model.out_features,  
-                                        dropout=self.model.dropout_value, 
-                                        LSTM_=LSTM_
-                                    ).to(self.device)
-                                    y_pred = model(x, hx)
-                                    modulation = F.huber_loss(y_pred, y, delta=delta)
-                                    if not self.deviate_from_mean(modulation, context):
-                                        reactivation = True
-                                        self.active_context = context
-                                        break
+                            with torch.no_grad():
+                                if self.confidence_context[self.active_context] > 0.9 and  self.deviate_from_mean(modulation, self.active_context):
+                           
+                                    reactivation = False
+                                    self.new_context = True                                       
+                                
+                                    for context in range(len(self.context_error)):
+                                        W = self.hnet(cond_id=context)
+                                        model = RNN_Main_Model(
+                                            num_features=self.model.num_features, 
+                                            hnet_output=W,  
+                                            hidden_size=self.model.hidden_size,
+                                            num_layers=self.model.num_layers, 
+                                            out_dims=self.model.out_features,  
+                                            dropout=self.model.dropout_value, 
+                                            LSTM_=LSTM_
+                                        ).to(self.device)
+                                        y_pred = model(x, hx)
+                                        m = F.huber_loss(y_pred, y, delta=delta)
+                                        print(m)
+                                        print(1.1 * torch.mean(self.context_error[context][-200:-1]))
+                                        if m < (1.1 * torch.mean(self.context_error[context][-200:-1])):
+                                            reactivation = True
+                                            self.active_context = context
+                                            break
 
-                                if not reactivation:
-                                    self.confidence_context.append(0)
-                                    self.active_context = len(self.context_error)
-                                    self.n_contexts += 1
-                                    self.context_error.append(self.context_error_0)
-                                    
-                            else:
-                                self.confidence_context[self.active_context] += (1 - self.confidence_context[self.active_context]) * 0.005
-                                self.context_error[self.active_context][-1] = modulation
+                                    if not reactivation:
+                                        self.confidence_context.append(0)
+                                        self.active_context = len(self.context_error)
+                                        self.n_contexts += 1
+                                        self.context_error.append(self.context_error_0)
+                                        prev_hnet = deepcopy(self.hnet)
+
+    
+                                else:
+                                    self.confidence_context[self.active_context] += (1 - self.confidence_context[self.active_context]) * 0.005
+                                    self.context_error[self.active_context][-1] = modulation
 
                     else:
                         W = self.hnet(cond_id=self.active_context)
@@ -205,7 +240,7 @@ class ContinualLearningTrainer:
                     val_losses.append(running_loss)
                     if running_loss < best_loss:
                         best_loss = running_loss
-                        best_model_wts = deepcopy(model.state_dict())
+                        best_model_wts = deepcopy(self.hnet.state_dict())
                         not_increased = 0
                     else:
                         if epoch > 10:
@@ -217,10 +252,10 @@ class ContinualLearningTrainer:
                                 end_train += 1
                             
                             if end_train == 2:
-                                self.model.load_state_dict(best_model_wts)
-                                return np.array(train_losses), np.array(val_losses)
-
+                                self.hnet.load_state_dict(best_model_wts)
+                                return self.hnet, np.array(train_losses), np.array(val_losses)
+            print('Num contexts after epoch ', epoch, len(self.context_error))                
             scheduler.step()
 
-        self.model.load_state_dict(best_model_wts)
-        return self.model, np.array(train_losses), np.array(val_losses)
+        self.hnet.load_state_dict(best_model_wts)
+        return self.hnet, np.array(train_losses), np.array(val_losses)

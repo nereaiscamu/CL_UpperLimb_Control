@@ -30,7 +30,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.abspath(os.path.join(current_dir, '..',))
 sys.path.append(parent_dir)
 print(sys.path)
-from src.trainer_hnet_context_infer import *
+
 from src.helpers import *
 from src.trainer_hnet import * 
 from Models.models import *

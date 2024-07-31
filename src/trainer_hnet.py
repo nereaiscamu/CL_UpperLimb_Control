@@ -65,7 +65,7 @@ def train_current_task(
     
     
     # Keep track of the best model's parameters and loss
-    best_model_wts = deepcopy(model.state_dict())
+    best_model_wts = deepcopy(hnet.state_dict())
     best_loss = 1e8
 
     # Enable anomaly detection for debugging
