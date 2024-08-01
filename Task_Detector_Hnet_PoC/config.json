@@ -3291,6 +3291,117 @@
         "beta_hnet_reg" : 100,
         "thrs" : 0.8
     }
+
+    , 
+
+    {
+        "experiment_name": "Experiment3_Task3", 
+        "_comment": "number 132 changed mean comp to all samples",
+        "data": "Sim_Data_Experiment60_sorted",
+        "num_trials": -1, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[50,50],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 100,
+        "thrs" : 0.8
+    }
+    ,
+
+    {
+        "experiment_name": "Experiment4_Task3", 
+        "_comment": "number 133_changed_mean computation to 100 samples and thresholds to 1.4",
+        "data": "Sim_Data_Experiment60_20trials",
+        "num_trials": -1, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[50,50],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 100,
+        "thrs" : 0.8
+    }
+
+    ,
+
+    {
+        "experiment_name": "Experiment5_Task3", 
+        "_comment": "number 134_saving data",
+        "data": "Sim_Data_Experiment60_sorted",
+        "num_trials": -1, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[50,50],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 100,
+        "thrs" : 0.8
+    }, 
+
+    {
+        "experiment_name": "Experiment6_Task3", 
+        "_comment": "number 135_saving data",
+        "data": "Sim_Data_Experiment60_sorted_doubles",
+        "num_trials": -1, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[50,50],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 100,
+        "thrs" : 0.8
+    }
+    
+    
 ]
 
 

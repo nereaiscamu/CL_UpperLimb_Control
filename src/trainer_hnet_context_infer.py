@@ -35,7 +35,7 @@ class ContinualLearningTrainer:
 
 
     def deviate_from_mean(self, modulation, context):
-        N = 60
+        N = 100
         k = 15
 
         # Ensure the context index is valid
@@ -56,7 +56,8 @@ class ContinualLearningTrainer:
             raise ValueError("Mean value (bar) is zero, cannot divide by zero.")
         
         # Return whether the deviation exceeds the threshold
-        return min_loss / bar > 1.1 #1.01
+
+        return min_loss / bar > 1.4 #1.01
 
 
     def train_current_task(
@@ -86,13 +87,21 @@ class ContinualLearningTrainer:
         optimizer = torch.optim.Adam(self.hnet.internal_params, lr=lr)
         scheduler = lr_scheduler.StepLR(optimizer, step_size=lr_step_size, gamma=lr_gamma)
 
-        best_model_wts = deepcopy(self.hnet.state_dict())
+        best_model_wts = None # deepcopy(self.hnet.state_dict()) --> check if that helps.
         best_loss = 1e8
 
         torch.autograd.set_detect_anomaly(True)
 
         train_losses = []
         val_losses = []
+        change_detect_epoch = []
+        prev_context = []
+        prev_min_loss = []
+        prev_mean_loss = []
+        new_context = []
+        new_min_loss = []
+        new_mean_loss = []
+
         not_increased = 0
         end_train = 0
         
@@ -196,8 +205,15 @@ class ContinualLearningTrainer:
                                         y_pred = model(x, hx)
                                         m = F.huber_loss(y_pred, y, delta=delta)
                                         print(m)
-                                        print(1.1 * torch.mean(self.context_error[context][-200:-1]))
-                                        if m < (1.1 * torch.mean(self.context_error[context][-200:-1])):
+                                        print(1.4 * torch.mean(self.context_error[context][-100:-1]))
+                                        change_detect_epoch.append(epoch)
+                                        prev_context.append(self.active_context)
+                                        prev_min_loss.append(torch.min(self.context_error[self.active_context][-15:-1].min(), modulation).detach().cpu().numpy())
+                                        prev_mean_loss.append(torch.mean(self.context_error[self.active_context][-100:-1]).detach().cpu().numpy())
+                                        new_context.append(context)
+                                        new_min_loss.append(m.detach().cpu().numpy())
+                                        new_mean_loss.append(torch.mean(self.context_error[context][-100:-1]).detach().cpu().numpy())
+                                        if m < (1.4 * torch.mean(self.context_error[context][-100:-1])):
                                             reactivation = True
                                             self.active_context = context
                                             break
@@ -241,6 +257,9 @@ class ContinualLearningTrainer:
                     if running_loss < best_loss:
                         best_loss = running_loss
                         best_model_wts = deepcopy(self.hnet.state_dict())
+                        final_active_context = self.active_context
+                        final_n_contexts = self.n_contexts
+                        final_context_error = self.context_error
                         not_increased = 0
                     else:
                         if epoch > 10:
@@ -253,9 +272,24 @@ class ContinualLearningTrainer:
                             
                             if end_train == 2:
                                 self.hnet.load_state_dict(best_model_wts)
-                                return self.hnet, np.array(train_losses), np.array(val_losses)
+                                self.context_error = final_context_error
+                                self.active_context = final_active_context
+                                self.n_contexts = final_n_contexts
+                                print('Final active context :', self.active_context)
+                                return self.hnet, np.array(train_losses), np.array(val_losses),\
+                                     np.array(val_losses),\
+                                     change_detect_epoch,prev_context, prev_min_loss,\
+                                        prev_mean_loss, new_context, \
+                                        new_min_loss,new_mean_loss
             print('Num contexts after epoch ', epoch, len(self.context_error))                
             scheduler.step()
 
         self.hnet.load_state_dict(best_model_wts)
-        return self.hnet, np.array(train_losses), np.array(val_losses)
+        self.context_error = final_context_error
+        self.active_context = final_active_context
+        self.n_contexts = final_n_contexts
+        print('Final active context :', self.active_context)
+        return self.hnet, np.array(train_losses),  np.array(val_losses),change_detect_epoch,\
+              prev_context, prev_min_loss,\
+                  prev_mean_loss, new_context, \
+                  new_min_loss,new_mean_loss

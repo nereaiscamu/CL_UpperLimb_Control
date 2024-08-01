@@ -118,7 +118,11 @@ class Run_Experiment_Block3:
         return y_hat, y_true, train_score, v_score, test_score
 
     def train_hnet(self, x_train, y_train, x_val, y_val, task_id, calc_reg):
-        best_model, train_losses, val_losses  = self.continual_trainer.train_current_task(
+        best_model, train_losses, val_losses,\
+              change_detect_epoch, \
+                    prev_context, prev_min_loss,\
+                        prev_mean_loss, new_context, \
+                            new_min_loss,new_mean_loss  = self.continual_trainer.train_current_task(
             y_train, 
             x_train, 
             y_val,
@@ -131,7 +135,7 @@ class Run_Experiment_Block3:
             sequence_length_LSTM=self.config.seq_length_LSTM,
             batch_size_train=self.config.batch_size_train,
             batch_size_val=self.config.batch_size_train,
-            num_epochs= 1000, 
+            num_epochs= 15, #1000, 
             delta=self.config.delta,
             beta=self.config.beta_hnet_reg, 
             regularizer=reg_hnet,
@@ -140,7 +144,10 @@ class Run_Experiment_Block3:
             early_stop=5,
             chunks=False
         )
-        return best_model, train_losses, val_losses
+        return best_model, train_losses, val_losses, change_detect_epoch, \
+                    prev_context, prev_min_loss,\
+                        prev_mean_loss, new_context, \
+                            new_min_loss,new_mean_loss
 
     def run(self):
         results_dict = {}
@@ -155,7 +162,11 @@ class Run_Experiment_Block3:
             if self.continual_trainer.n_contexts >= 1:
                 self.calc_reg = True
             print(s, 'Calc reg', self.calc_reg)
-            self.hnet, train_losses_, val_losses_, = self.train_hnet(x_train, y_train, x_val, y_val, 
+            self.hnet, train_losses_, val_losses_,\
+                change_detect_epoch, \
+                    prev_context, prev_min_loss,\
+                        prev_mean_loss, new_context, \
+                            new_min_loss,new_mean_loss= self.train_hnet(x_train, y_train, x_val, y_val, 
                                                                      self.continual_trainer.active_context, 
                                                                      calc_reg=self.calc_reg)
             print('num contexts:' , self.continual_trainer.n_contexts)
@@ -170,6 +181,14 @@ class Run_Experiment_Block3:
             results_dict_subset['hnet_val_losses'] = val_losses_
             elapsed_time = time.time() - start_time
             results_dict_subset['training_time'] = elapsed_time
+            results_dict_subset['change_detect_epoch'] = change_detect_epoch
+            results_dict_subset['prev_active_context'] = prev_context
+            results_dict_subset['prev_min_loss'] = prev_min_loss
+            results_dict_subset['prev_mean_loss'] = prev_mean_loss
+            results_dict_subset['new_tested_context'] = new_context
+            results_dict_subset['new_loss'] = new_min_loss
+            results_dict_subset['new_mean_loss'] = new_mean_loss
+
 
             results_dict[s] = results_dict_subset
 
