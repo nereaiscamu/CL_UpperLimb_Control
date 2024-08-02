@@ -32,6 +32,7 @@ class ContinualLearningTrainer:
         self.context_error = [self.context_error_0]
         self.confidence_context = [0]
         self.active_context = 0
+        self.thresholds_contexts = torch.nn.Parameter(torch.full((60,), 1.2), requires_grad=False)
 
 
     def deviate_from_mean(self, modulation, context):
@@ -112,6 +113,8 @@ class ContinualLearningTrainer:
 
         hx = torch.randn(self.model.num_layers, batch_size_train, self.model.hidden_size, device=self.device) * 0.1
 
+        
+
         if self.n_contexts == 0:
             self.n_contexts += 1
         
@@ -162,12 +165,13 @@ class ContinualLearningTrainer:
                             loss_task = F.huber_loss(y_pred, y, delta=delta)
 
                             if calc_reg and self.active_context>0:
-                                reg_targets = get_current_targets(self.active_context, prev_hnet)
+                                reg_targets = get_current_targets_NC(self.active_context, prev_hnet, len(self.context_error))
                                 prev_hnet_theta = None
                                 prev_task_embs = None
-                                loss_reg = calc_fix_target_reg(
+                                loss_reg = calc_fix_target_reg_NC(
                                     self.hnet,
                                     context,
+                                    len(self.context_error),
                                     targets=reg_targets,
                                     mnet=self.model,
                                     prev_theta=prev_hnet_theta,
@@ -189,7 +193,11 @@ class ContinualLearningTrainer:
                                 if self.confidence_context[self.active_context] > 0.9 and  self.deviate_from_mean(modulation, self.active_context):
                            
                                     reactivation = False
-                                    self.new_context = True                                       
+                                    self.new_context = True   
+
+                                    if epoch == 0:
+                                        for c in range(len(self.context_error)):
+                                            self.thresholds_contexts[c] += 0.1                                    
                                 
                                     for context in range(len(self.context_error)):
                                         W = self.hnet(cond_id=context)
@@ -205,17 +213,22 @@ class ContinualLearningTrainer:
                                         y_pred = model(x, hx)
                                         m = F.huber_loss(y_pred, y, delta=delta)
                                         print(m)
-                                        print(1.4 * torch.mean(self.context_error[context][-100:-1]))
+                                        thrs_context = self.thresholds_contexts[context]
+                                        print(thrs_context * torch.mean(self.context_error[context][-100:-1]))
                                         change_detect_epoch.append(epoch)
                                         prev_context.append(self.active_context)
                                         prev_min_loss.append(torch.min(self.context_error[self.active_context][-15:-1].min(), modulation).detach().cpu().numpy())
-                                        prev_mean_loss.append(torch.mean(self.context_error[self.active_context][-100:-1]).detach().cpu().numpy())
+                                        prev_mean_loss.append(torch.mean(self.context_error[self.active_context][-1000:-1]).detach().cpu().numpy())
                                         new_context.append(context)
                                         new_min_loss.append(m.detach().cpu().numpy())
-                                        new_mean_loss.append(torch.mean(self.context_error[context][-100:-1]).detach().cpu().numpy())
-                                        if m < (1.4 * torch.mean(self.context_error[context][-100:-1])):
+                                        new_mean_loss.append(thrs_context * torch.mean(self.context_error[context][-1000:-1]).detach().cpu().numpy())
+
+                                        
+                                        
+                                        if m < (thrs_context * torch.mean(self.context_error[context][-1000:-1])):
                                             reactivation = True
                                             self.active_context = context
+                                            self.thresholds_contexts[context] = 1.2
                                             break
 
                                     if not reactivation:
@@ -270,14 +283,13 @@ class ContinualLearningTrainer:
                                 not_increased = 0
                                 end_train += 1
                             
-                            if end_train == 2:
+                            if end_train == 1:
                                 self.hnet.load_state_dict(best_model_wts)
                                 self.context_error = final_context_error
                                 self.active_context = final_active_context
                                 self.n_contexts = final_n_contexts
                                 print('Final active context :', self.active_context)
                                 return self.hnet, np.array(train_losses), np.array(val_losses),\
-                                     np.array(val_losses),\
                                      change_detect_epoch,prev_context, prev_min_loss,\
                                         prev_mean_loss, new_context, \
                                         new_min_loss,new_mean_loss

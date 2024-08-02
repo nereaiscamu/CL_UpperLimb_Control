@@ -122,6 +122,12 @@ def reg_hnet_allweights(weights, alpha, l1_ratio):
 
     return reg
 
+
+
+
+
+###############################3
+#######################################
 # Anirudh's Function to get the weights generated with the model using previous conditions
 def get_current_targets(task_id, hnet):
     r"""For all :math:`j < \text{task\_id}`, compute the output of the
@@ -327,4 +333,177 @@ def calc_fix_target_reg(
             reg += reg_i
 
     return reg / num_regs
+
+#########################################################################################
+#########################################################################################
+########### Regularizer for continual learning modified to be able to keep training on a previously learned task. 
+
+
+def get_current_targets_NC(task_id, hnet, num_tasks_learned):
+    r"""For all tasks already learned, compute the output of the
+    hypernetwork. This output will be detached from the graph before being added
+    to the return list of this function.
+
+    Args:
+        task_id (int): The ID of the current task.
+        hnet: An instance of the hypernetwork before learning a new task
+            (i.e., the hypernetwork has the weights :math:`\theta^*` necessary
+            to compute the targets).
+        num_tasks_learned (int): The total number of tasks learned so far.
+
+    Returns:
+        An empty list, if ``num_tasks_learned`` is ``0``. Otherwise, a list of
+        all learned targets excluding the current task.
+    """
+    # We temporarily switch to eval mode for target computation (e.g., to get
+    # rid of training stochasticities such as dropout).
+    hnet_mode = hnet.training
+    hnet.eval()
+
+    ret = []
+
+    # Create a list of task IDs, excluding the current task ID
+    tasks_to_evaluate = [i for i in range(num_tasks_learned) if i != task_id]
+
+    with torch.no_grad():
+        W = hnet.forward(cond_id=tasks_to_evaluate, ret_format="sequential")
+        ret = [[p.detach() for p in W_tid] for W_tid in W]
+
+    hnet.train(mode=hnet_mode)
+
+    return ret
+
+
+import numpy as np
+
+def calc_fix_target_reg_NC(
+    hnet,
+    task_id,
+    num_tasks_learned,
+    targets=None,
+    dTheta=None,
+    dTembs=None,
+    mnet=None,
+    prev_theta=None,
+    prev_task_embs=None,
+    batch_size=None,
+    reg_scaling=None,
+):
+    r"""This regularizer simply restricts the output-mapping for previous
+    task embeddings. I.e., for all tasks already learned, minimize:
+
+    .. math::
+        \lVert \text{target}_j - h(c_j, \theta + \Delta\theta) \rVert^2
+
+    Args:
+        hnet: The hypernetwork whose output should be regularized; has to
+            implement the interface
+            :class:`hnets.hnet_interface.HyperNetInterface`.
+        task_id (int): The ID of the current task (the one that is used to
+            compute ``dTheta``).
+        num_tasks_learned (int): The total number of tasks learned so far.
+        targets (list): A list of outputs of the hypernetwork. Each list entry
+            must have the output shape as returned by the
+            :meth:`hnets.hnet_interface.HyperNetInterface.forward` method of the
+            ``hnet``.
+        dTheta (list, optional): The current direction of weight change for the
+            internal (unconditional) weights of the hypernetwork evaluated on
+            the task-specific loss.
+        dTembs (list, optional): The current direction of weight change for the
+            task embeddings of all tasks that have been learned already.
+        mnet: Instance of the main network. Has to be provided if
+            ``inds_of_out_heads`` are specified.
+        prev_theta (list, optional): The internal unconditional weights
+            :math:`theta` prior to learning the current task.
+        prev_task_embs (list, optional): The task embeddings (conditional
+            parameters) of the hypernetwork.
+        batch_size (int, optional): If specified, only a random subset of
+            previous tasks is regularized.
+        reg_scaling (list, optional): If specified, the regulariation terms for
+            the different tasks are scaled according to the entries of this
+            list.
+
+    Returns:
+        The value of the regularizer.
+    """
+    assert isinstance(hnet, HyperNetInterface)
+    assert task_id >= 0
+    assert targets is None or len(targets) == num_tasks_learned - 1
+    assert targets is None or (prev_theta is None and prev_task_embs is None)
+    assert prev_theta is None or prev_task_embs is not None
+    assert dTembs is None or len(dTembs) >= num_tasks_learned
+    assert reg_scaling is None or len(reg_scaling) >= num_tasks_learned
+
+    # Number of tasks to be regularized.
+    num_regs = num_tasks_learned - 1  # Exclude current task
+    ids_to_reg = [i for i in range(num_tasks_learned) if i != task_id]
+
+    if batch_size is not None and batch_size > 0:
+        if num_regs > batch_size:
+            ids_to_reg = np.random.choice(
+                ids_to_reg, size=batch_size, replace=False
+            ).tolist()
+            num_regs = batch_size
+
+    # FIXME Assuming all unconditional parameters are internal.
+    assert len(hnet.unconditional_params) == len(hnet.unconditional_param_shapes)
+
+    weights = dict()
+    uncond_params = hnet.unconditional_params
+    if dTheta is not None:
+        uncond_params = hnet.add_to_uncond_params(dTheta, params=uncond_params)
+    weights["uncond_weights"] = uncond_params
+
+    if dTembs is not None:
+        # FIXME That's a very unintutive solution for the user.
+        assert (
+            hnet.conditional_params is not None
+            and len(hnet.conditional_params) == len(hnet.conditional_param_shapes)
+            and len(hnet.conditional_params) == len(dTembs)
+        )
+        weights["cond_weights"] = hnet.add_to_uncond_params(
+            dTembs, params=hnet.conditional_params
+        )
+
+    if targets is None:
+        prev_weights = dict()
+        prev_weights["uncond_weights"] = prev_theta
+        # FIXME We just assume that `prev_task_embs` are all conditional
+        # weights.
+        prev_weights["cond_weights"] = prev_task_embs
+
+    reg = 0
+
+    for idx, t_ids in enumerate(ids_to_reg):
+        weights_predicted = hnet.forward(cond_id=t_ids, weights=weights)
+        #print('Computed weights for the regularizer from task ', i )
+
+        if targets is not None:
+            target = targets[idx]
+        else:
+            # Compute targets in eval mode!
+            hnet_mode = hnet.training
+            hnet.eval()
+
+            # Compute target on the fly using previous hnet.
+            with torch.no_grad():
+                target = hnet.forward(cond_id=i, weights=prev_weights)
+            target = [d.detach().clone() for d in target]
+
+            hnet.train(mode=hnet_mode)
+
+        # Regularize all weights of the main network.
+        W_target = torch.cat([w.view(-1) for w in target])
+        W_predicted = torch.cat([w.view(-1) for w in weights_predicted])
+
+        reg_i = (W_target - W_predicted).pow(2).sum()
+
+        if reg_scaling is not None:
+            reg += reg_scaling[i] * reg_i
+        else:
+            reg += reg_i
+
+    return reg / num_regs
+
+
 
