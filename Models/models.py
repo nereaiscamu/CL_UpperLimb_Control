@@ -115,6 +115,46 @@ class Causal_Simple_RNN(nn.Module):
 
         return output.squeeze()
     
+class Causal_Simple_LSTM(nn.Module):
+    def __init__(self, num_features=124, 
+                hidden_units= 3, #was 128
+                num_layers = 2, 
+                out_dims = 6,
+                dropout = 0.5):
+        super(Causal_Simple_LSTM, self).__init__()
+        self.num_features = num_features
+        self.hidden_units = hidden_units
+        self.num_layers = num_layers
+        self.out_dims = out_dims
+        self.dropout = dropout
+
+        self.linear = nn.Linear(in_features=self.hidden_units, out_features= self.out_dims)
+
+        self.lstm = nn.LSTM(
+            input_size = self.num_features, 
+            hidden_size = self.hidden_units, 
+            num_layers = self.num_layers, 
+            bias= True, 
+            batch_first= True,
+            bidirectional=False,)  
+
+
+        self.selu = nn.SELU()
+    
+        self.dropout = nn.Dropout(p= dropout) #trial.suggest_float('dropout_1', 0.1, 0.9)
+        
+        # Flatten the parameters
+        self.lstm.flatten_parameters()
+
+    def forward(self, x):
+        x, _ = self.lstm(x)
+        x = self.dropout(x)
+        x = self.selu(x) 
+        output = self.linear(x)
+
+        return output.squeeze()
+
+    
 
 #### This model is meant to be used with hnets.
 def create_state_dict(param_names, param_values):

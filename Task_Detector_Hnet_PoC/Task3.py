@@ -58,7 +58,7 @@ class ExperimentConfig:
 
 
 class Run_Experiment_Block3:
-    def __init__(self, config, device, datasets):
+    def __init__(self, config, device, datasets, LSTM):
         self.config = config
         self.device = device
         self.datasets = datasets
@@ -66,11 +66,13 @@ class Run_Experiment_Block3:
         self.num_dim_output = datasets[list(datasets.keys())[0]][1].shape[2]
         self.num_conditions = 60
         self.size_task_embedding = 24
+        self.LSTM = LSTM
         self.hnet = self._initialize_hnet()
         self.model = self._initialize_model()
         self.n_contexts = 0
         self.continual_trainer = ContinualLearningTrainer(self.model, self.hnet, self.n_contexts, self.device)
         self.calc_reg = False
+        
     
     def _initialize_hnet(self):
         param_shapes = [p.shape for p in list(self._initialize_task_detector().parameters())]
@@ -84,13 +86,25 @@ class Run_Experiment_Block3:
         return hnet
 
     def _initialize_task_detector(self):
-        return Causal_Simple_RNN(
+        if self.LSTM:
+            return Causal_Simple_LSTM(
             num_features=self.num_features, 
             hidden_units=self.config.hidden_units, 
             num_layers=self.config.num_layers, 
             out_dims=self.num_dim_output,
             dropout=self.config.dropout
         ).to(self.device)
+
+        else:
+            return Causal_Simple_RNN(
+                num_features=self.num_features, 
+                hidden_units=self.config.hidden_units, 
+                num_layers=self.config.num_layers, 
+                out_dims=self.num_dim_output,
+                dropout=self.config.dropout
+            ).to(self.device)
+        
+    
 
     def _initialize_model(self):
         w_test = self.hnet(cond_id=0)
@@ -101,7 +115,7 @@ class Run_Experiment_Block3:
             num_layers=self.config.num_layers,
             out_dims=self.num_dim_output,  
             dropout=self.config.dropout,  
-            LSTM_=False
+            LSTM_= self.LSTM
         ).to(self.device)
         for param in model.parameters():
             param.requires_grad = False
@@ -122,7 +136,8 @@ class Run_Experiment_Block3:
               change_detect_epoch, \
                     prev_context, prev_min_loss,\
                         prev_mean_loss, new_context, \
-                            new_min_loss,new_mean_loss  = self.continual_trainer.train_current_task(
+                            new_min_loss,new_mean_loss,\
+                                  sim_score, active_context  = self.continual_trainer.train_current_task(
             y_train, 
             x_train, 
             y_val,
@@ -135,19 +150,21 @@ class Run_Experiment_Block3:
             sequence_length_LSTM=self.config.seq_length_LSTM,
             batch_size_train=self.config.batch_size_train,
             batch_size_val=self.config.batch_size_train,
-            num_epochs= 20, #1000, 
+            num_epochs= 15, #20, #1000, 
             delta=self.config.delta,
             beta=self.config.beta_hnet_reg, 
             regularizer=reg_hnet,
             l1_ratio=self.config.l1_ratio_reg,
             alpha=0.01,
             early_stop=5,
-            chunks=False
+            chunks=False, 
+            LSTM_ = self.LSTM
         )
         return best_model, train_losses, val_losses, change_detect_epoch, \
                     prev_context, prev_min_loss,\
                         prev_mean_loss, new_context, \
-                            new_min_loss,new_mean_loss
+                            new_min_loss,new_mean_loss,\
+                                  sim_score, active_context
 
     def run(self):
         results_dict = {}
@@ -166,7 +183,8 @@ class Run_Experiment_Block3:
                 change_detect_epoch, \
                     prev_context, prev_min_loss,\
                         prev_mean_loss, new_context, \
-                            new_min_loss,new_mean_loss= self.train_hnet(x_train, y_train, x_val, y_val, 
+                            new_min_loss,new_mean_loss, \
+                                  sim_score, active_context = self.train_hnet(x_train, y_train, x_val, y_val, 
                                                                      self.continual_trainer.active_context, 
                                                                      calc_reg=self.calc_reg)
             print('num contexts:' , self.continual_trainer.n_contexts)
@@ -188,7 +206,8 @@ class Run_Experiment_Block3:
             results_dict_subset['new_tested_context'] = new_context
             results_dict_subset['new_loss'] = new_min_loss
             results_dict_subset['new_mean_loss'] = new_mean_loss
-
+            results_dict_subset['similarity_score'] = sim_score
+            results_dict_subset['active_context'] = active_context
 
             results_dict[s] = results_dict_subset
 
@@ -233,7 +252,7 @@ def main(args):
             # Now running experiment on the desired trial number
             print('Running experiment...')
             config = ExperimentConfig(experiment)
-            runner = Run_Experiment_Block3(config, device, sets)
+            runner = Run_Experiment_Block3(config, device, sets, LSTM = True)
             results_dict = runner.run()
 
             path_to_results = os.path.join('.','Results')
@@ -268,7 +287,7 @@ def main(args):
         # Now running experiment on the desired trial number
         print('Running experiment...')
         config = ExperimentConfig(experiment)
-        runner = Run_Experiment_Block3(config, device, sets)
+        runner = Run_Experiment_Block3(config, device, sets, LSTM = True)
         results_dict = runner.run()
 
         path_to_results = os.path.join('.','Results')

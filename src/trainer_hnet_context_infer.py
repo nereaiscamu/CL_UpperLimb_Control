@@ -21,6 +21,8 @@ from Models.models import *
 from src.sequence_datasets import * 
 
 
+
+
 class ContinualLearningTrainer:
     def __init__(self, model, hnet, n_contexts, device='cuda'):
         self.model = model
@@ -33,6 +35,14 @@ class ContinualLearningTrainer:
         self.confidence_context = [0]
         self.active_context = 0
         self.thresholds_contexts = torch.nn.Parameter(torch.full((60,), 1.2), requires_grad=False)
+
+        # List to store mean covariance matrices and counts for each context
+        self.task_covariances = []
+        self.task_cov_counts = []
+
+        # Initialize rolling window to store the last 15 covariance matrices
+        self.rolling_covariances = []
+        
 
 
     def deviate_from_mean(self, modulation, context):
@@ -59,6 +69,38 @@ class ContinualLearningTrainer:
         # Return whether the deviation exceeds the threshold
 
         return min_loss / bar > 1.4 #1.01
+    
+
+        
+    def update_covariance_for_context(self, features, context):
+        """Update the mean covariance matrix for a given context."""
+        new_covariance = compute_covariance_matrix(features)
+
+        # Update the mean covariance for the context
+        if len(self.task_covariances) <= context:
+            self.task_covariances.append(new_covariance)
+            self.task_cov_counts.append(1)
+        else:
+            self.task_covariances[context] = update_mean_covariance(
+                self.task_covariances[context],
+                new_covariance,
+                self.task_cov_counts[context]
+            )
+            self.task_cov_counts[context] += 1
+    
+    def is_similar_to_previous_tasks(self, current_covariance, t = 10) : # 0.1):
+        """Determine if the current task is similar to any previously learned task."""
+        for i, prev_covariance in enumerate(self.task_covariances):
+            # Calculate the difference in covariance matrices
+            diff = torch.abs(current_covariance - prev_covariance)
+  
+
+            # Calculate similarity score
+            similarity_score = diff.mean().item()
+            
+            if similarity_score < t:
+                return True, i  # Return True and the index of the similar task
+        return False, -1  # Return False if no similar task is found
 
 
     def train_current_task(
@@ -102,6 +144,7 @@ class ContinualLearningTrainer:
         new_context = []
         new_min_loss = []
         new_mean_loss = []
+        similarity_scores = []
 
         not_increased = 0
         end_train = 0
@@ -111,8 +154,14 @@ class ContinualLearningTrainer:
         loader_train = data.DataLoader(train_dataset, batch_size=batch_size_train, shuffle=True)
         loader_val = data.DataLoader(val_dataset, batch_size=batch_size_val, shuffle=True)
 
-        hx = torch.randn(self.model.num_layers, batch_size_train, self.model.hidden_size, device=self.device) * 0.1
+        # Initialize h0 and c0 outside the model
+        if LSTM_ == True:
 
+            h0 = torch.randn(self.model.num_layers, batch_size_train, self.model.hidden_size, device=self.device) * 0.1
+            c0 = torch.randn(self.model.num_layers, batch_size_train, self.model.hidden_size, device=self.device) * 0.1 # Initialize cell state
+            hx = (h0, c0) 
+        else:
+            hx = torch.randn(self.model.num_layers, batch_size_train, self.model.hidden_size, device=self.device) * 0.1
         
 
         if self.n_contexts == 0:
@@ -185,10 +234,16 @@ class ContinualLearningTrainer:
                             if regularizer is not None:
                                 loss_t = loss_t + regularizer(W, alpha, l1_ratio)
 
+
                             loss_t.backward()
                             optimizer.step()
 
                             modulation = loss_task.detach()
+
+                            # Update covariance for the current context
+                            self.update_covariance_for_context(x.detach(), self.active_context)
+                            current_covariance_ = compute_covariance_matrix(x.detach())
+
                             with torch.no_grad():
                                 if self.confidence_context[self.active_context] > 0.9 and  self.deviate_from_mean(modulation, self.active_context):
                            
@@ -214,22 +269,38 @@ class ContinualLearningTrainer:
                                         m = F.huber_loss(y_pred, y, delta=delta)
                                         print(m)
                                         thrs_context = self.thresholds_contexts[context]
-                                        print(thrs_context * torch.mean(self.context_error[context][-100:-1]))
+                                        print(thrs_context * torch.mean(self.context_error[context][-1000:-1]))
+                                       
                                         change_detect_epoch.append(epoch)
                                         prev_context.append(self.active_context)
                                         prev_min_loss.append(torch.min(self.context_error[self.active_context][-15:-1].min(), modulation).detach().cpu().numpy())
                                         prev_mean_loss.append(torch.mean(self.context_error[self.active_context][-1000:-1]).detach().cpu().numpy())
                                         new_context.append(context)
                                         new_min_loss.append(m.detach().cpu().numpy())
-                                        new_mean_loss.append(thrs_context * torch.mean(self.context_error[context][-1000:-1]).detach().cpu().numpy())
+                                        new_mean_loss.append(thrs_context * torch.mean(self.context_error[context][-1000:-1]).detach().cpu().numpy())  
 
-                                        
+                                        # Calculate similarity score
+                                        diff = torch.abs(current_covariance_ - self.task_covariances[context])
+                                        similarity_score_ = diff.mean().item()
+                                        print('Similarity', similarity_score_)
+                                        similarity_scores.append(similarity_score_)
                                         
                                         if m < (thrs_context * torch.mean(self.context_error[context][-1000:-1])):
                                             reactivation = True
                                             self.active_context = context
                                             self.thresholds_contexts[context] = 1.2
                                             break
+
+                                    # Covariance-based task detection
+                                    
+                                    similar_task_found, similar_task_index = self.is_similar_to_previous_tasks(
+                                        current_covariance_ 
+                                    )
+                                    if similar_task_found:
+                                        print('Found similarities with other covariance matrix')
+                                        self.active_context = similar_task_index
+                                        print('New context is ', self.active_context)
+                                        reactivation = True
 
                                     if not reactivation:
                                         self.confidence_context.append(0)
@@ -256,9 +327,9 @@ class ContinualLearningTrainer:
                         ).to(self.device)
                         y_pred = model(x, hx)
                         loss = F.huber_loss(y_pred, y, delta=delta)
-                        loss_t = loss
+                        loss_task = loss
 
-                    assert torch.isfinite(loss_t)
+                    assert torch.isfinite(loss_task)
                     running_loss += loss_t.item()
                     running_size += 1
 
@@ -273,6 +344,7 @@ class ContinualLearningTrainer:
                         final_active_context = self.active_context
                         final_n_contexts = self.n_contexts
                         final_context_error = self.context_error
+                        final_sim_scores = similarity_scores
                         not_increased = 0
                     else:
                         if epoch > 10:
@@ -288,11 +360,12 @@ class ContinualLearningTrainer:
                                 self.context_error = final_context_error
                                 self.active_context = final_active_context
                                 self.n_contexts = final_n_contexts
+                                similarity_scores = final_sim_scores if len(final_sim_scores) > 0 else ['No similarities']
                                 print('Final active context :', self.active_context)
                                 return self.hnet, np.array(train_losses), np.array(val_losses),\
                                      change_detect_epoch,prev_context, prev_min_loss,\
                                         prev_mean_loss, new_context, \
-                                        new_min_loss,new_mean_loss
+                                        new_min_loss,new_mean_loss, self.similarity_scores, self.active_context
             print('Num contexts after epoch ', epoch, len(self.context_error))                
             scheduler.step()
 
@@ -300,8 +373,10 @@ class ContinualLearningTrainer:
         self.context_error = final_context_error
         self.active_context = final_active_context
         self.n_contexts = final_n_contexts
+        similarity_scores = final_sim_scores if len(final_sim_scores) > 0 else ['No similarities']
         print('Final active context :', self.active_context)
+        
         return self.hnet, np.array(train_losses),  np.array(val_losses),change_detect_epoch,\
               prev_context, prev_min_loss,\
                   prev_mean_loss, new_context, \
-                  new_min_loss,new_mean_loss
+                  new_min_loss,new_mean_loss, similarity_scores, self.active_context

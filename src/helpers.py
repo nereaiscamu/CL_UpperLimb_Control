@@ -777,6 +777,31 @@ def ewc_loss(model, fisher_matrices, optimal_params):
     return loss
 
 
+##########################################################
+######### ADDING COVARIANCE TO CHECK TASK IDENTITY
+
+def compute_covariance_matrix(features):
+    """Compute the covariance matrix for a given batch of outputs."""
+    features = features[:,-1,:]
+    batch_size, num_features = features.shape
+
+    # Center the outputs by subtracting the mean
+    outputs_centered = features - features.mean(dim=0)
+
+    # Compute covariance matrix
+    covariance_matrix = (outputs_centered.T @ outputs_centered) / (batch_size - 1)
+    return covariance_matrix
+
+def update_mean_covariance(mean_covariance, new_covariance, count):
+    """Update the running mean of covariance matrices."""
+    if mean_covariance is None:
+        return new_covariance
+    else:
+        return (mean_covariance * count + new_covariance) / (count + 1)
+    
+
+
+
 
 
 

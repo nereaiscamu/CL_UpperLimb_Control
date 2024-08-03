@@ -3539,7 +3539,88 @@
         "beta_hnet_reg" : 10000,
         "thrs" : 0.8
     }
-    
+    ,
+
+    {
+        "experiment_name": "Experiment9_Task3_LSTM", 
+        "_comment": "number 141 using 0.1 again, using 20 epochs, reducing early stopping (only checking it once), and using last 1000 samples to compute the mean",
+        "data": "Sim_Data_Experiment60_sorted",
+        "num_trials": -1, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[50,50],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 10000,
+        "thrs" : 0.8
+    }
+    , 
+
+    {
+        "experiment_name": "Experiment9_Task3_LSTM_Covariance", 
+        "_comment": "number 142 using 0.1 again, using 20 epochs, reducing early stopping (only checking it once), and using last 1000 samples to compute the mean",
+        "data": "Sim_Data_Experiment60_sorted",
+        "num_trials": -1, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[50,50],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 10000,
+        "thrs" : 0.8
+    }
+
+    , 
+
+    {
+        "experiment_name": "Experiment9_Test", 
+        "_comment": "number 143 Same as previous, changing the threshold for similarity in covariance and 5 epochs only",
+        "data": "Sim_Data_Experiment60_sorted",
+        "num_trials": -1, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[25,25],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 10000,
+        "thrs" : 0.8
+    }
 ]
 
 
