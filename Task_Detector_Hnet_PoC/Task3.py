@@ -65,7 +65,6 @@ class Run_Experiment_Block3:
         self.num_features = datasets[list(datasets.keys())[0]][0].shape[2]
         self.num_dim_output = datasets[list(datasets.keys())[0]][1].shape[2]
         self.num_conditions = 60
-        self.size_task_embedding = 24
         self.LSTM = LSTM
         self.hnet = self._initialize_hnet()
         self.model = self._initialize_model()
@@ -150,7 +149,7 @@ class Run_Experiment_Block3:
             sequence_length_LSTM=self.config.seq_length_LSTM,
             batch_size_train=self.config.batch_size_train,
             batch_size_val=self.config.batch_size_train,
-            num_epochs= 15, #20, #1000, 
+            num_epochs= 30, #1000, 
             delta=self.config.delta,
             beta=self.config.beta_hnet_reg, 
             regularizer=reg_hnet,
@@ -242,7 +241,7 @@ def main(args):
                 # Either keep only a number of trials from the dataset or make sure baseline is the first task
                 sets = create_sets(sets, num_trials)
                 # Save the data to understand which experiment was run
-                path_to_save_data = os.path.join(data_dir, data+'_'+str(num_trials)+'trials.pkl')
+                path_to_save_data = os.path.join(data_dir, data+'_'+str(num_trials)+'trials_v2.pkl')
                 # Pickle the data and save it to file
                 with open(path_to_save_data, 'wb') as handle:
                     pickle.dump(sets, handle, protocol=4)
@@ -278,7 +277,7 @@ def main(args):
                 # Either keep only a number of trials from the dataset or make sure baseline is the first task
                 sets = create_sets(sets, num_trials)
                 # Save the data to understand which experiment was run
-                path_to_save_data = os.path.join(data_dir, data+'_'+str(num_trials)+'trials.pkl')
+                path_to_save_data = os.path.join(data_dir, data+'_'+str(num_trials)+'trials_v2.pkl')
                 # Pickle the data and save it to file
                 with open(path_to_save_data, 'wb') as handle:
                     pickle.dump(sets, handle, protocol=4)

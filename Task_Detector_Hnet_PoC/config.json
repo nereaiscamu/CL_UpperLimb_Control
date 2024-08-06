@@ -3621,7 +3621,262 @@
         "beta_hnet_reg" : 10000,
         "thrs" : 0.8
     }
+
+    , 
+
+    {
+        "experiment_name": "Experiment12_Task3", 
+        "_comment": "number 144 Same as previous, changing the threshold for similarity in covariance and 5 epochs only",
+        "data": "Sim_Data_Experiment60_sorted",
+        "num_trials": -1, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[50,50],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 10000,
+        "thrs" : 0.8
+    }
+    , 
+
+    {
+        "experiment_name": "Experiment9_Test_Data61", 
+        "_comment": "number 145 Same as Experiment 9 Test, but using data 61",
+        "data": "Sim_Data_Experiment61",
+        "num_trials": -1, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[25,25],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 10000,
+        "thrs" : 0.8
+    }
+
+    ,
+
+    {
+        "experiment_name": "Experiment9_Test_Data61_sorted", 
+        "_comment": "number 146 Same as Experiment 9 Test, but using data 61 sorted. Using rolling mean of 25 samples, and using 25 epochs.",
+        "data": "Sim_Data_Experiment61",
+        "num_trials": -1, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[25,25],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 10000,
+        "thrs" : 0.8
+    }
+
+    ,
+
+    {
+        "experiment_name": "Experiment13_Task3", 
+        "_comment": "number 147 Same as Experiment 9 Test. Using rolling mean of 20 samples, 25 epochs, threshold at 5.5.",
+        "data": "Sim_Data_Experiment60_sorted",
+        "num_trials": -1, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[25,25],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 10000,
+        "thrs" : 0.8
+    }
+
+    ,
+
+    {
+        "experiment_name": "Experiment13_Task3_allepochs", 
+        "_comment": "number 148 Same as Experiment 13. Using all epochs.",
+        "data": "Sim_Data_Experiment60_sorted",
+        "num_trials": -1, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[25,25],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 10000,
+        "thrs" : 0.8
+    }
+    , 
+
+
+    {
+        "experiment_name": "Experiment13_Task3_allepochs_thr2", 
+        "_comment": "number 149 Same as Experiment 13. Using all epochs.",
+        "data": "Sim_Data_Experiment60_sorted",
+        "num_trials": -1, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[25,25],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 10000,
+        "thrs" : 0.8
+    }
+
+    , 
+
+
+    {
+        "experiment_name": "Experiment13_Task3_changing_embedding", 
+        "_comment": "number 150 Same as Experiment 13. Using all epochs. Embedding size 12",
+        "data": "Sim_Data_Experiment60_sorted",
+        "num_trials": -1, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[25,25],
+        "embedding_size":12,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 10000,
+        "thrs" : 0.8
+    }
+
+    , 
+
+
+    {
+        "experiment_name": "Experiment13_Task3_emb12_batch50", 
+        "_comment": "number 151 Same as the one before, increasing batch size.",
+        "data": "Sim_Data_Experiment60_sorted",
+        "num_trials": -1, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[25,25],
+        "embedding_size":12,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 50,
+        "batch_size_val" : 50,
+        "beta_hnet_reg" : 10000,
+        "thrs" : 0.8
+    }
+
+    , 
+
+
+    {
+        "experiment_name": "Experiment13_Task3_emb12_batch50_30epochs", 
+        "_comment": "number 152 Same as the one before, increasing batch size.",
+        "data": "Sim_Data_Experiment60_sorted",
+        "num_trials": -1, 
+        "fold" : 0,
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[25,25],
+        "embedding_size":12,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 50,
+        "batch_size_val" : 50,
+        "beta_hnet_reg" : 10000,
+        "thrs" : 0.8
+    }
 ]
+
 
 
 
