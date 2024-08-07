@@ -295,7 +295,7 @@ class ContinualLearningTrainer:
                                         if m < (thrs_context * torch.mean(self.context_error[context][-1000:-1])):
                                             reactivation = True
                                             self.active_context = context
-                                            self.thresholds_contexts[context] = 1.4
+                                            self.thresholds_contexts[context] = 2.2
                                             break
 
                                     # Covariance-based task detection
