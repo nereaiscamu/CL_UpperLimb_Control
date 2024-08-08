@@ -149,7 +149,7 @@ class Run_Experiment_Block3:
             sequence_length_LSTM=self.config.seq_length_LSTM,
             batch_size_train=self.config.batch_size_train,
             batch_size_val=self.config.batch_size_train,
-            num_epochs= 30, #1000, 
+            num_epochs= 40, #1000, 
             delta=self.config.delta,
             beta=self.config.beta_hnet_reg, 
             regularizer=reg_hnet,

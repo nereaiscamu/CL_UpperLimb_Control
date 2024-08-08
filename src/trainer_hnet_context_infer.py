@@ -66,7 +66,10 @@ class ContinualLearningTrainer:
         # Return whether the deviation exceeds the threshold
         return min_loss / bar > 1.4 #1.01
     
-        
+    ### TO DO: change this and divide into 2 parts, one for the rolling covariance 
+    # and the other for the task covariance    
+    # The idea is to not add a covariance if it might be from a different task 
+    # Note: the change is minimal, but might be a good upgrade
     def update_covariance_for_context(self, features, context):
         """Update the mean covariance matrix for a given context."""
         new_covariance = compute_covariance_matrix(features)
@@ -97,19 +100,32 @@ class ContinualLearningTrainer:
         return sum(covariances) / len(covariances)
     
     
-    def is_similar_to_previous_tasks(self, current_covariance, t = 5.5) : # 7):
+    def is_similar_to_previous_tasks(self, current_covariance, t=5): # 5.5, 7):
         """Determine if the current task is similar to any previously learned task."""
+        similar_tasks = []  # List to store tuples of (index, similarity_score) for similar tasks
+
         for i, prev_covariance in enumerate(self.task_covariances):
             # Calculate the difference in covariance matrices
             diff = torch.abs(current_covariance - prev_covariance)
-  
+
             # Calculate similarity score
             similarity_score = diff.mean().item()
-            
+
+            # Check if similarity score is below the threshold
             if similarity_score < t:
-                return True, i  # Return True and the index of the similar task
-                
+                similar_tasks.append((i, similarity_score))
+
+        # If there are any similar tasks, find the one with the lowest similarity score
+        if similar_tasks:
+            # Sort similar tasks by similarity score (ascending order)
+            similar_tasks.sort(key=lambda x: x[1])
+            
+            # Select the task with the lowest similarity score
+            best_match_index, best_similarity_score = similar_tasks[0]
+            return True, best_match_index
+
         return False, -1  # Return False if no similar task is found
+
 
 
     def train_current_task(
@@ -259,7 +275,19 @@ class ContinualLearningTrainer:
 
                                     if epoch == 0:
                                         for c in range(len(self.context_error)):
-                                            self.thresholds_contexts[c] += 0.2        # was 0.1                            
+                                            self.thresholds_contexts[c] += 0.2        # was 0.1      
+
+                                    # Covariance-based task detection
+                                    
+                                    similar_task_found, similar_task_index = self.is_similar_to_previous_tasks(
+                                        rolling_mean_covariance 
+                                    )
+                                    if similar_task_found:
+                                        print('Found similarities with other covariance matrix')
+                                        self.active_context = similar_task_index
+                                        print('New context is ', self.active_context)
+                                        reactivation = True
+                                        self.thresholds_contexts[self.active_context] = 2.2                      
                                 
                                     for context in range(len(self.context_error)):
                                         W = self.hnet(cond_id=context)
@@ -291,23 +319,15 @@ class ContinualLearningTrainer:
                                         similarity_score_ = diff.mean().item()
                                         print('Similarity', similarity_score_)
                                         similarity_scores.append(similarity_score_)
-                                        
-                                        if m < (thrs_context * torch.mean(self.context_error[context][-1000:-1])):
-                                            reactivation = True
-                                            self.active_context = context
-                                            self.thresholds_contexts[context] = 2.2
-                                            break
 
-                                    # Covariance-based task detection
-                                    
-                                    similar_task_found, similar_task_index = self.is_similar_to_previous_tasks(
-                                        rolling_mean_covariance 
-                                    )
-                                    if similar_task_found:
-                                        print('Found similarities with other covariance matrix')
-                                        self.active_context = similar_task_index
-                                        print('New context is ', self.active_context)
-                                        reactivation = True
+
+                                        if similar_task_found == False:
+                                            #### Test using loss.
+                                            if m < (thrs_context * torch.mean(self.context_error[context][-1000:-1])):
+                                                reactivation = True
+                                                self.active_context = context
+                                                self.thresholds_contexts[context] = 2.2
+                                                break
 
                                     if not reactivation:
                                         self.confidence_context.append(0)

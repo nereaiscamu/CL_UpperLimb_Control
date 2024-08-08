@@ -156,7 +156,7 @@ def main(args):
 
     ## Load pre-processed data
     data_path = '../../Data/Processed_Data/Tidy_'+name+'_'+date+'.pkl'
-
+    
     with open(data_path, 'rb') as file:
         tidy_df = pickle.load(file)
         
