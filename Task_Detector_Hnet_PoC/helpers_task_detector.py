@@ -149,9 +149,13 @@ def create_sets(datasets, num_trials):
     return sorted_data
 
 
-#######################
+####################################################################
 
 # Result Analysis helper functions
+
+
+
+
 
 def set_plot_style():
     # Define the custom color palette
@@ -186,6 +190,9 @@ def set_plot_style():
         'ytick.major.pad': 5
     })
 
+
+##########################################
+############# Result Analysis Task 2
 
 
 def true_task_dict(data):
@@ -465,19 +472,30 @@ def plot_comparison(df):
    
 
 def plot_order_heatmap(df):
-    # Pivot the dataframe for heatmap
-    heatmap_data = df.pivot_table(index="Second Trained Task", columns="Third Trained Task", values="R2 Third Task")
+    # Create a new DataFrame for mean and std
+    mean_data = df.pivot_table(index="Second Trained Task", columns="Third Trained Task", values="R2 Third Task", aggfunc='mean')
+    std_data = df.pivot_table(index="Second Trained Task", columns="Third Trained Task", values="R2 Third Task", aggfunc='std')
+
+    # Round the mean and std values
+    mean_data = mean_data.round(2)
+    std_data = std_data.round(5)
+
+
+    # Prepare annotations with mean and std
+    annotations = mean_data.copy().astype(str)  # Convert means to string
+    for (i, j), val in np.ndenumerate(std_data):
+        annotations.iat[i, j] += f' ± {val:.4f}'  # Append std to the mean
 
     # Generate the heatmap with enhanced styling
-    plt.figure(figsize=(8, 6))
+    plt.figure(figsize=(10, 8))
 
     sns.set(font_scale=1.2)  # Increase the font size
-    heatmap = sns.heatmap(heatmap_data, annot=True, cmap="coolwarm", fmt=".2f", linewidths=.5, cbar_kws={'label': 'R2 Value'})
+    heatmap = sns.heatmap(mean_data, annot=annotations, cmap="coolwarm", fmt="", linewidths=.5, cbar_kws={'label': 'R2 Value'})
 
     # Customize the heatmap for better appearance
-    plt.title('Heatmap of R2 Values', fontsize=18)
+    plt.title('Heatmap of R2 Values with Std Dev', fontsize=18)
     plt.xlabel('Third Trained Task', fontsize=14)
-    plt.ylabel('Second Trained Task', fontsize=14)#, weight='bold')
+    plt.ylabel('Second Trained Task', fontsize=14)
 
     # Improve tick label appearance
     plt.xticks(rotation=45, ha='right', fontsize=12)
@@ -785,3 +803,229 @@ def create_table_FWT(df, experiment_name, data):
     
     return df_forward_trans
 
+##########################################
+############# Result Analysis Task 3
+
+device = torch.device("cpu")
+
+
+## 1- Checking Loss Metric
+
+# First using only last model (hnet corresponding to the last embedding), 
+# we are going to compute the loss for the whole training dataset,
+#  as well as the training loss for the different batches of the testing dataset
+
+def create_dataset_losses(data_experiment, model, keys_training, keys_testing):
+    n_contexts = len(keys_training)
+    embedding = []
+    mean_loss_embeddding = []
+    tested_set = []
+    loss_set = []
+    num_batch = []
+
+    LSTM_ = True
+
+    for i in range(n_contexts):
+        x_train, y_train = data_experiment[keys_training[i]][0:2]
+        model.to(device)
+        W = model(cond_id = int(i))
+        main_net = RNN_Main_Model(num_features= 130, hnet_output = W,  
+                                hidden_size = 300, num_layers= 1, out_dims=2,  
+                                dropout= 0.2,  LSTM_ = LSTM_)
+        # Move model to the correct device
+        main_net.to(device)
+        if LSTM_ == True:
+            h0 = torch.randn(1, 50, 300, device= device) * 0.1
+            c0 = torch.randn(1, 50, 300, device= device) * 0.1 # Initialize cell state
+            hx = (h0, c0) 
+        train_dataset = SequenceDataset(y_train, x_train, sequence_length=19)
+        loader_train = data.DataLoader(train_dataset, batch_size=50, shuffle=True)
+        loss_task = 0
+        n_batches = 1
+        for x,y in loader_train:
+            x = x.to(device)
+            y = y.to(device)
+            y_pred = main_net(x, hx).to(device)
+            loss_task +=  F.huber_loss(y_pred, y, delta=8).detach().numpy()
+            n_batches += 1
+        loss_real_task = loss_task / n_batches
+
+        for t in range(n_contexts):
+            x_train_2, y_train_2 = data_experiment[keys_testing[t]][0:2]
+            train_dataset_2 = SequenceDataset(y_train_2, x_train_2, sequence_length=19)
+            loader_train_2 = data.DataLoader(train_dataset_2, batch_size=50, shuffle=True)
+            n_count = 0
+            for x_1, y_2 in loader_train_2:
+                x = x_1.to(device)
+                y = y_2.to(device)
+                y_pred = main_net(x, hx).to(device)
+                loss_batch =  F.huber_loss(y_pred, y, delta=8).detach().numpy()
+                n_count += 1
+                embedding.append('Emb'+ str(i) + '('+(keys_training[i])+')')
+                mean_loss_embeddding.append(loss_real_task)
+                tested_set.append(keys_testing[t])
+                loss_set.append(loss_batch.item())
+                num_batch.append(n_count)
+                if n_count == 50:
+                    break
+    df = pd.DataFrame({'Used Embedding' : embedding, 
+                    'Mean Task Loss' : mean_loss_embeddding, 
+                    'Tested Set' : tested_set, 
+                    'Loss Batch' : loss_set,
+                    'Num Batch' : num_batch})
+    return df
+
+
+def plot_loss_metric(df):
+
+    # Create the boxplot
+    plt.figure(figsize = [12,8])
+    set_plot_style()
+    ax = sns.boxplot(x='Used Embedding', y='Loss Batch', hue='Tested Set', data=df)
+
+    # Get the unique values and their positions
+    unique_embeddings = df['Used Embedding'].unique()
+    n_hues = len(df['Tested Set'].unique())
+    positions = ax.get_xticks()  # x positions for each category
+
+    # Iterate over each embedding
+    for i, embedding in enumerate(unique_embeddings):
+        # Calculate the mean task loss for each embedding
+        mean_task_loss = df[df['Used Embedding'] == embedding]['Mean Task Loss'].values[0]
+
+        # Define the xmin and xmax for each embedding
+        xmin = positions[i] - 0.3
+        xmax = positions[i] + 0.1 * (n_hues - 1)
+
+        # Draw the horizontal dashed line
+        plt.hlines(y=mean_task_loss, xmin=xmin, xmax=xmax, color='k', linestyle='--', label=f'Mean Task Loss' if i == 0 else "")
+
+    # Add labels and title
+    plt.xlabel('Used Embedding')
+    plt.ylabel('Loss Batch')
+    plt.title('Boxplot of Batch losses vs Mean Loss per Dataset')
+    plt.legend(title='Tested Dataset', bbox_to_anchor=(1.05, 1), loc='upper left')
+
+    # Show the plot
+    plt.tight_layout()
+    plt.show()
+
+
+
+
+    ## 2- Checking Covariance Metric
+
+def compute_mean_covariance(covariances):
+    """Compute the mean of a list of covariance matrices."""
+    return sum(covariances) / len(covariances)
+
+def update_covariance_for_context(features, context, rolling_covariances, task_covariances, task_cov_counts):
+    """Update the mean covariance matrix for a given context."""
+    new_covariance = compute_covariance_matrix(features)
+
+    # Update the rolling window of covariances
+    rolling_covariances.append(new_covariance)
+    if len(rolling_covariances) > 20: #was 15 before
+        rolling_covariances.pop(0)
+
+    # Compute mean of rolling covariances
+    rolling_mean_covariance = compute_mean_covariance(rolling_covariances)
+
+    # Update the mean covariance for the context
+    if len(task_covariances) <= context:
+        task_covariances.append(rolling_mean_covariance)
+        task_cov_counts.append(1)
+    else:
+        task_covariances[context] = update_mean_covariance(
+            task_covariances[context],
+            rolling_mean_covariance,
+            task_cov_counts[context]
+        )
+        task_cov_counts[context] += 1
+    return rolling_covariances, task_covariances, task_cov_counts
+    
+
+
+def create_dataset_cov(data_experiment, keys_training, keys_testing):
+
+    n_contexts = len(keys_training)
+    embedding = []
+    tested_set = []
+    similarity = []
+    num_batch = []
+
+    # List to store mean covariance matrices and counts for each context
+    task_covariances = []
+    task_cov_counts = []
+
+    # Initialize rolling window to store the last 15 covariance matrices
+    rolling_covariances = []
+
+    for i in range(n_contexts):
+        x_train, y_train = data_experiment[keys_training[i]][0:2]
+        train_dataset = SequenceDataset(y_train, x_train, sequence_length=19)
+        loader_train = data.DataLoader(train_dataset, batch_size=50, shuffle=True)
+
+        for x,y in loader_train:
+            x = x.to(device)
+            rolling_covariances, task_covariances, task_cov_counts = update_covariance_for_context(x.detach(), i, rolling_covariances, task_covariances, task_cov_counts)
+            
+        mean_covariance_task = task_covariances[i]
+
+        # List to store mean covariance matrices and counts for each context
+        task_covariances_test = []
+        task_cov_counts_test = []
+
+        # Initialize rolling window to store the last 15 covariance matrices
+        rolling_covariances_test = []
+        
+        for t in range(n_contexts):
+            x_train_2, y_train_2 = data_experiment[keys_testing[t]][0:2]
+            train_dataset_2 = SequenceDataset(y_train_2, x_train_2, sequence_length=19)
+            loader_train_2 = data.DataLoader(train_dataset_2, batch_size=50, shuffle=True)
+            n_count = 0
+            for x_1, y_2 in loader_train_2:
+                x = x_1.to(device)          
+                rolling_covariances_test, task_covariances_test, task_cov_counts_test = update_covariance_for_context(x, t,rolling_covariances_test, task_covariances_test, task_cov_counts_test )
+                n_count += 1
+                if n_count>20:
+                    rolling_mean_covariance_test = compute_mean_covariance(rolling_covariances_test)
+                    diff = torch.abs(rolling_mean_covariance_test - mean_covariance_task)
+                    # Calculate similarity score
+                    similarity_score = diff.mean().item()
+                    embedding.append('Emb'+ str(i) + '('+(keys_training[i])+')')
+                    tested_set.append(keys_testing[t])
+                    similarity.append(similarity_score)
+                    num_batch.append(n_count)
+                    if n_count>70:
+                        break
+
+    df_covariance = pd.DataFrame({'Used Embedding' : embedding, 
+                    'Tested Set' : tested_set, 
+                    'Difference Value' : similarity,
+                    'Num Batch' : num_batch})
+    return df_covariance
+
+def plot_covariance_metric(df):
+    # Create the boxplot
+    plt.figure(figsize=(12, 8))
+    set_plot_style()
+    num_embeddings = df['Used Embedding'].nunique()
+    ax = sns.boxplot(x='Used Embedding', y='Difference Value', hue='Tested Set', data=df)
+    # Draw the horizontal dashed line
+    plt.hlines(y=5, xmin=-0.5, xmax=num_embeddings - 0.5, color='r', linestyle='--', label='Similarity Threshold')
+
+    # Get the unique values and their positions
+    unique_embeddings = df['Used Embedding'].unique()
+    n_hues = len(df['Tested Set'].unique())
+    positions = ax.get_xticks()  # x positions for each category
+
+    # Add labels and title
+    plt.xlabel('Used Mean Covariance')
+    plt.ylabel('Rolling Covariance Batch')
+    plt.title('Covariance Matrix differences between datasets')
+    plt.legend(title='Tested Dataset', bbox_to_anchor=(1.05, 1), loc='upper left')
+
+    # Show the plot
+    plt.tight_layout()
+    plt.show()

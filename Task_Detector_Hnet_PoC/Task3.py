@@ -223,7 +223,7 @@ def main(args):
         experiments = json.load(f)
 
     if index == -1:
-        for exp in range(125,128): 
+        for exp in range(160,172): 
             experiment = experiments[exp]
             name = experiment['experiment_name']
             print('Running esperiment ', name)
@@ -241,7 +241,7 @@ def main(args):
                 # Either keep only a number of trials from the dataset or make sure baseline is the first task
                 sets = create_sets(sets, num_trials)
                 # Save the data to understand which experiment was run
-                path_to_save_data = os.path.join(data_dir, data+'_'+str(num_trials)+'trials_v2.pkl')
+                path_to_save_data = os.path.join(data_dir, data+'_'+str(num_trials)+'trials_v4.pkl')
                 # Pickle the data and save it to file
                 with open(path_to_save_data, 'wb') as handle:
                     pickle.dump(sets, handle, protocol=4)
@@ -277,7 +277,7 @@ def main(args):
                 # Either keep only a number of trials from the dataset or make sure baseline is the first task
                 sets = create_sets(sets, num_trials)
                 # Save the data to understand which experiment was run
-                path_to_save_data = os.path.join(data_dir, data+'_'+str(num_trials)+'trials_v2.pkl')
+                path_to_save_data = os.path.join(data_dir, data+'_'+str(num_trials)+'trials_v4.pkl')
                 # Pickle the data and save it to file
                 with open(path_to_save_data, 'wb') as handle:
                     pickle.dump(sets, handle, protocol=4)

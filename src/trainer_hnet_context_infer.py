@@ -66,11 +66,13 @@ class ContinualLearningTrainer:
         # Return whether the deviation exceeds the threshold
         return min_loss / bar > 1.4 #1.01
     
+
+    
     ### TO DO: change this and divide into 2 parts, one for the rolling covariance 
     # and the other for the task covariance    
     # The idea is to not add a covariance if it might be from a different task 
     # Note: the change is minimal, but might be a good upgrade
-    def update_covariance_for_context(self, features, context):
+    def update_rolling_covariance(self, features):
         """Update the mean covariance matrix for a given context."""
         new_covariance = compute_covariance_matrix(features)
 
@@ -78,6 +80,9 @@ class ContinualLearningTrainer:
         self.rolling_covariances.append(new_covariance)
         if len(self.rolling_covariances) > 20: #was 15 before
             self.rolling_covariances.pop(0)
+
+    
+    def update_covariance_for_context(self, context):
 
         # Compute mean of rolling covariances
         rolling_mean_covariance = self.compute_mean_covariance(self.rolling_covariances)
@@ -261,7 +266,7 @@ class ContinualLearningTrainer:
                             modulation = loss_task.detach()
 
                             # Update covariance for the current context
-                            self.update_covariance_for_context(x.detach(), self.active_context)
+                            self.update_rolling_covariance(x.detach())
 
                             # Compute the current covariance
                             rolling_mean_covariance = self.compute_mean_covariance(self.rolling_covariances)
@@ -335,11 +340,14 @@ class ContinualLearningTrainer:
                                         self.n_contexts += 1
                                         self.context_error.append(self.context_error_0)
                                         prev_hnet = deepcopy(self.hnet)
+                                        self.rolling_covariances = [] # Added on 08/08/2024
 
     
                                 else:
                                     self.confidence_context[self.active_context] += (1 - self.confidence_context[self.active_context]) * 0.005
                                     self.context_error[self.active_context][-1] = modulation
+                                    self.update_covariance_for_context(context)
+
 
                     else:
                         W = self.hnet(cond_id=self.active_context)
