@@ -1029,3 +1029,207 @@ def plot_covariance_metric(df):
     # Show the plot
     plt.tight_layout()
     plt.show()
+
+
+    ########### 3- Checking model performance 
+
+def create_perf_df(names_exp1, tidy_df):
+    exps = []
+    last_model = []
+    datasets = []
+    best_r2 = []
+    path_to_models = './Models/Models_HNET_Block3'
+
+    for exp in names_exp1:
+        
+        data_exp = tidy_df.loc[tidy_df['experiment'] == exp].reset_index()
+        idx_last_model = data_exp.active_context[9:10].item()
+        num_conditions = len(np.sort(os.listdir(os.path.join(path_to_models, exp))))
+        model_last = torch.load(os.path.join(path_to_models,exp, 'Model_Task_'+str(idx_last_model)+'.pth'))
+        for data_ in data_exp['dataset'].unique():
+            data_path_ = './Data/Sim_Data_Experiment63_-1trials_v'+str(exp[-1])+'.pkl'
+            with open(os.path.join(data_path_), 'rb') as fp:
+                data_exp_ = pickle.load(fp)
+            x_train, y_train, x_val, y_val, x_test, y_test = data_exp_[data_]
+            r2_list = []
+            for cond in range(num_conditions):
+                W = model_last(cond_id = cond)
+                main_net = RNN_Main_Model(num_features= 130, hnet_output = W,  hidden_size = 300,
+                                            num_layers= 1,out_dims=2,  
+                                            dropout= 0.2,  LSTM_ = True)
+                r2_, _ = calc_explained_variance_mnet(x_test, y_test, W, main_net)
+                r2_list.append(r2_)
+            exps.append(exp)
+            datasets.append(data_)
+            last_model.append('Model_Task_'+str(idx_last_model)+'.pth')
+            best_r2.append(max(r2_list))
+            
+    df_performance = pd.DataFrame({'Experiment':exps, 
+                                'Model' : last_model, 
+                                'Dataset' : datasets, 
+                                'R2 Score' : best_r2})
+
+    df_performance['Name'] = df_performance['Dataset'].apply(lambda x : add_name_from_dataset(x))
+    return df_performance
+
+def plot_perf_metric(df):
+    # Create the boxplot
+    plt.figure()
+    set_plot_style()
+    
+    ax = sns.boxplot(x='Name', y='R2 Score',  data=df) #hue='Dataset',
+    # Add labels and title
+    plt.xlabel('Tasks')
+    plt.ylabel('Testing R2 Score')
+
+    # Show the plot
+    plt.tight_layout()
+    plt.show()
+
+
+
+    ########### 3- Checking task changes 
+
+
+
+def plot_learning_inference(results_template, df_changes, task_dict):
+
+    plt.figure(figsize=[16, 7])
+
+    set_plot_style()
+
+    custom_palette = [
+        '#5F9EA0',  # cadet blue
+        '#FFD700',  # gold
+        '#FFA07A',  # light salmon
+        '#87CEEB',  # light blue
+        '#9370DB',  # medium purple
+        '#98FB98',  # pale green
+        '#FF7F50',  # coral
+        '#FF69B4',  # hot pink
+        '#20B2AA',  # light sea green
+        '#FF6347',  # tomato
+        '#4682B4',  # steel blue
+        '#DA70D6',  # orchid
+        '#32CD32'   # lime green
+    ]
+
+    # Plot the training losses for each task
+    task_data_keys = list(results_template.keys())
+    unique_tasks = range(len(task_data_keys))
+    #colors = sns.color_palette("hsv", len(unique_tasks))
+    color_map = {task: custom_palette[i] for i, task in enumerate(unique_tasks)}
+
+    highest_tested_task = np.max(df_changes.new_tested_context.unique())
+    dataset_legend = df_changes.loc[df_changes.new_tested_context == highest_tested_task]['Dataset'].values
+    if len(dataset_legend) > 1:
+        dataset_legend = dataset_legend[-1]
+
+    contexts_found_template = ['*Task 0', '*Task 1', '*Task 2', '*Task 1', 
+                    '*Task 0', '*Task 3', '*Task 3', '*Task 4',
+                    '*Task 4', '*Task 2']
+
+    training_sets = ['Data_0_1', 'Data_4_1', 'Data_3_1', 'Data_1_1', 'Data_2_1']
+
+
+
+    start_epoch = 0
+    for i, key in enumerate(task_data_keys):
+        task = task_dict[key]
+        if i < len(task_data_keys):
+            start_epoch = start_epoch
+            line_style = '-' if key in training_sets else '--'
+            end_epoch = start_epoch + len(results_template[key]['hnet_train_losses'])
+            plt.plot(
+                np.arange(start_epoch, end_epoch), 
+                results_template[key]['hnet_train_losses'], 
+                label=key,
+                color= color_map[task] , #color_map[task]
+                linestyle=line_style
+            )
+
+            plt.plot(
+                np.arange(start_epoch, end_epoch), 
+                results_template[key]['hnet_val_losses'], 
+                color=color_map[task],
+                alpha = 0.5,
+                linestyle=line_style
+            )
+            plt.text(
+                start_epoch+3, 
+                13,
+                #f"Context: {data_new_task['Active Context'].values[0]}",
+                contexts_found_template[i],
+                fontsize=13,
+                color=color_map[int(contexts_found_template[i][-1])],
+                ha='center'
+                )
+        
+        # Scatter plot for change detection and losses
+        if key in df_changes.Dataset.unique():
+            changes_dataset = df_changes[df_changes.Dataset == key]   
+
+        
+            if len(changes_dataset.Task.unique()) > 0:
+                task = int(changes_dataset.Task.unique())
+                for new_task in changes_dataset.new_tested_context.unique():
+                    data_new_task = changes_dataset[changes_dataset.new_tested_context == new_task].reset_index()
+                    if key == dataset_legend:
+                        
+                        plt.scatter(
+                            #(data_new_task.prev_active_context + 1) * 15, 
+                            start_epoch,
+                            data_new_task['new_loss'], 
+                            
+                            color=color_map[new_task], 
+                            #label=f'New Loss Task {new_task}', 
+                            marker='o'
+                        )
+                    else:
+                    
+                        plt.scatter(
+                            #(data_new_task.prev_active_context + 1) * 15, 
+                            start_epoch,
+                            data_new_task['new_loss'][0], 
+                            
+                            color=color_map[new_task], 
+                            #label=f'New Loss Task {new_task}', 
+                            marker='o'
+                        )
+
+                    plt.scatter(
+                        start_epoch,
+                        #(data_new_task.prev_active_context + 1) * 15, 
+                        data_new_task['new_mean_loss'][0], 
+                        color=color_map[new_task], 
+                        
+                        #label=f'Mean Loss Task {new_task}', 
+                        marker='x'
+                    )
+                    
+        start_epoch = end_epoch
+
+    # Get the current legend handles and labels
+    handles, labels = plt.gca().get_legend_handles_labels()
+    # Create a proxy artist for the legend
+    from matplotlib.lines import Line2D
+
+
+    legend_elements = [
+        Line2D([0], [0], color='black', marker='x', linestyle='None', label='Mean Loss Task'),
+        Line2D([0], [0], color='black', marker='o', linestyle='None', label='Batch Loss Task'),
+        Line2D([0], [0], color='black', marker='*', linestyle='None', label='Inferred Task Context')
+    ]
+
+    # Combine existing handles and labels with the proxy artist
+    handles.extend(legend_elements)
+    labels.extend(['Mean Loss Task', 'Batch Loss Task', 'Inferred Task'])
+
+
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.title('Training Losses and Task Change Detection')
+    plt.legend(handles=handles, labels=labels, loc='center', bbox_to_anchor=(0.5, -0.3), ncol=3, fancybox=True, shadow=True)
+
+
+    plt.show()

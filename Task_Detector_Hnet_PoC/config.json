@@ -5454,6 +5454,61 @@
         "beta_hnet_reg" : 0.1,
         "thrs" : 0.8
     }
+    ,
+
+    {
+        "experiment_name": "Experiment1_Adaptation", 
+        "_comment": "number 211, Task 3 with real neural data from adaptation set.",
+        "data": "Real_Data_Adaptation",
+        "num_trials": -1, 
+        "fold" : 0, 
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[25,25],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 50,
+        "batch_size_val" : 50,
+        "beta_hnet_reg" : 10000,
+        "thrs" : 0.8
+    }
+
+    ,
+
+    {
+        "experiment_name": "Experiment1_Stimulation", 
+        "_comment": "number 212, Task 3 with real neural data from stimulation set. Changed batch size as trials are 75 samples long.",
+        "data": "Real_Data_Stimulation",
+        "num_trials": -1, 
+        "fold" : 0, 
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[25,25],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 10000,
+        "thrs" : 0.8
+    }
 
 ]
 

@@ -32,7 +32,7 @@ class ContinualLearningTrainer:
         self.context_error = [self.context_error_0]
         self.confidence_context = [0]
         self.active_context = 0
-        self.thresholds_contexts = torch.nn.Parameter(torch.full((60,), 2.2), requires_grad=False) # changed to 1.4 from 1.2, and from 1.4 to 2
+        self.thresholds_contexts = torch.nn.Parameter(torch.full((60,), 1.01), requires_grad=False) # final version 2.2
 
         # List to store mean covariance matrices and counts for each context
         self.task_covariances = []
@@ -64,7 +64,7 @@ class ContinualLearningTrainer:
             raise ValueError("Mean value (bar) is zero, cannot divide by zero.")
         
         # Return whether the deviation exceeds the threshold
-        return min_loss / bar > 1.4 #1.01
+        return min_loss / bar > 1.01 # final version 1.4 
     
 
     
@@ -105,7 +105,7 @@ class ContinualLearningTrainer:
         return sum(covariances) / len(covariances)
     
     
-    def is_similar_to_previous_tasks(self, current_covariance, t=5): # 5.5, 7):
+    def is_similar_to_previous_tasks(self, current_covariance, t= 0.03): # final version 5):
         """Determine if the current task is similar to any previously learned task."""
         similar_tasks = []  # List to store tuples of (index, similarity_score) for similar tasks
 
@@ -280,7 +280,7 @@ class ContinualLearningTrainer:
 
                                     if epoch == 0:
                                         for c in range(len(self.context_error)):
-                                            self.thresholds_contexts[c] += 0.2        # was 0.1      
+                                            self.thresholds_contexts[c] += 0.2      #  Final version 0.2      
 
                                     # Covariance-based task detection
                                     
@@ -292,7 +292,7 @@ class ContinualLearningTrainer:
                                         self.active_context = similar_task_index
                                         print('New context is ', self.active_context)
                                         reactivation = True
-                                        self.thresholds_contexts[self.active_context] = 2.2                      
+                                        self.thresholds_contexts[self.active_context] = 1.01 # Final version 2.2                      
                                 
                                     for context in range(len(self.context_error)):
                                         W = self.hnet(cond_id=context)
@@ -309,15 +309,15 @@ class ContinualLearningTrainer:
                                         m = F.huber_loss(y_pred, y, delta=delta)
                                         print(m)
                                         thrs_context = self.thresholds_contexts[context]
-                                        print(thrs_context * torch.mean(self.context_error[context][-1000:-1]))
+                                        print(thrs_context * torch.mean(self.context_error[context][-100:-1])) # Final version [-1000:-1]
                                        
                                         change_detect_epoch.append(epoch)
                                         prev_context.append(self.active_context)
                                         prev_min_loss.append(torch.min(self.context_error[self.active_context][-15:-1].min(), modulation).detach().cpu().numpy())
-                                        prev_mean_loss.append(torch.mean(self.context_error[self.active_context][-1000:-1]).detach().cpu().numpy())
+                                        prev_mean_loss.append(torch.mean(self.context_error[self.active_context][-100:-1]).detach().cpu().numpy()) # Final version [-1000:-1]
                                         new_context.append(context)
                                         new_min_loss.append(m.detach().cpu().numpy())
-                                        new_mean_loss.append(thrs_context * torch.mean(self.context_error[context][-1000:-1]).detach().cpu().numpy())  
+                                        new_mean_loss.append(thrs_context * torch.mean(self.context_error[context][-100:-1]).detach().cpu().numpy())  # Final version [-1000:-1]
 
                                         # Calculate similarity score
                                         diff = torch.abs(rolling_mean_covariance - self.task_covariances[context])
@@ -328,10 +328,10 @@ class ContinualLearningTrainer:
 
                                         if similar_task_found == False:
                                             #### Test using loss.
-                                            if m < (thrs_context * torch.mean(self.context_error[context][-1000:-1])):
+                                            if m < (thrs_context * torch.mean(self.context_error[context][-100:-1])): # Final version [-1000:-1]
                                                 reactivation = True
                                                 self.active_context = context
-                                                self.thresholds_contexts[context] = 2.2
+                                                self.thresholds_contexts[context] = 1.01 # Final version 2.2  
                                                 break
 
                                     if not reactivation:
@@ -415,3 +415,4 @@ class ContinualLearningTrainer:
               prev_context, prev_min_loss,\
                   prev_mean_loss, new_context, \
                   new_min_loss,new_mean_loss, similarity_scores, self.active_context
+    
