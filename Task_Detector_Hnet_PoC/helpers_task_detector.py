@@ -815,7 +815,7 @@ device = torch.device("cpu")
 # we are going to compute the loss for the whole training dataset,
 #  as well as the training loss for the different batches of the testing dataset
 
-def create_dataset_losses(data_experiment, model, keys_training, keys_testing):
+def create_dataset_losses(data_experiment, keys_training, keys_testing, exp_name):
     n_contexts = len(keys_training)
     embedding = []
     mean_loss_embeddding = []
@@ -825,10 +825,14 @@ def create_dataset_losses(data_experiment, model, keys_training, keys_testing):
 
     LSTM_ = True
 
+    path_to_hnets = './Models/Models_HNET_Block3'
+
     for i in range(n_contexts):
+        # The mean loss for the trained tasks is computed using the model after training on the specific task 
+        model_i = torch.load(os.path.join(path_to_hnets,exp_name, 'Model_Task_'+str(i)+'.pth'))
         x_train, y_train = data_experiment[keys_training[i]][0:2]
-        model.to(device)
-        W = model(cond_id = int(i))
+        model_i.to(device)
+        W = model_i(cond_id = int(i))
         main_net = RNN_Main_Model(num_features= 130, hnet_output = W,  
                                 hidden_size = 300, num_layers= 1, out_dims=2,  
                                 dropout= 0.2,  LSTM_ = LSTM_)
@@ -850,7 +854,17 @@ def create_dataset_losses(data_experiment, model, keys_training, keys_testing):
             n_batches += 1
         loss_real_task = loss_task / n_batches
 
+        # The loss for the new tasks will be computed using the last version of the hypernetwork. 
+        model_test = torch.load(os.path.join(path_to_hnets,exp_name, 'Model_Task_4.pth'))
+        model_test.to(device)
+        W_test = model_test(cond_id = int(i))
+        main_net_test = RNN_Main_Model(num_features= 130, hnet_output = W_test,  
+                            hidden_size = 300, num_layers= 1, out_dims=2,  
+                            dropout= 0.2,  LSTM_ = LSTM_)
+        main_net_test.to(device)
+
         for t in range(n_contexts):
+            
             x_train_2, y_train_2 = data_experiment[keys_testing[t]][0:2]
             train_dataset_2 = SequenceDataset(y_train_2, x_train_2, sequence_length=19)
             loader_train_2 = data.DataLoader(train_dataset_2, batch_size=50, shuffle=True)
@@ -858,10 +872,10 @@ def create_dataset_losses(data_experiment, model, keys_training, keys_testing):
             for x_1, y_2 in loader_train_2:
                 x = x_1.to(device)
                 y = y_2.to(device)
-                y_pred = main_net(x, hx).to(device)
+                y_pred = main_net_test(x, hx).to(device)
                 loss_batch =  F.huber_loss(y_pred, y, delta=8).detach().numpy()
                 n_count += 1
-                embedding.append('Emb'+ str(i) + '('+(keys_training[i])+')')
+                embedding.append((keys_training[i]))
                 mean_loss_embeddding.append(loss_real_task)
                 tested_set.append(keys_testing[t])
                 loss_set.append(loss_batch.item())
@@ -875,9 +889,10 @@ def create_dataset_losses(data_experiment, model, keys_training, keys_testing):
                     'Num Batch' : num_batch})
     return df
 
-
 def plot_loss_metric(df):
 
+    df['Tested Set'] = df['Tested Set'].apply(lambda x: add_name_from_dataset(x))
+    df['Used Embedding'] = df['Used Embedding'].apply(lambda x: add_name_from_dataset(x))
     # Create the boxplot
     plt.figure(figsize = [12,8])
     set_plot_style()
@@ -904,7 +919,7 @@ def plot_loss_metric(df):
     plt.xlabel('Used Embedding')
     plt.ylabel('Loss Batch')
     plt.title('Boxplot of Batch losses vs Mean Loss per Dataset')
-    plt.legend(title='Tested Dataset', bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.legend(title='Tested Dataset', loc='center', bbox_to_anchor=(0.5, -0.3), ncol=3, fancybox=True, shadow=True)
 
     # Show the plot
     plt.tight_layout()
@@ -1007,6 +1022,8 @@ def create_dataset_cov(data_experiment, keys_training, keys_testing):
     return df_covariance
 
 def plot_covariance_metric(df):
+    df['Tested Set'] = df['Tested Set'].apply(lambda x: add_name_from_dataset(x))
+    df['Used Embedding'] = df['Used Embedding'].apply(lambda x: add_name_from_dataset(x))
     # Create the boxplot
     plt.figure(figsize=(12, 8))
     set_plot_style()
@@ -1022,9 +1039,9 @@ def plot_covariance_metric(df):
 
     # Add labels and title
     plt.xlabel('Used Mean Covariance')
-    plt.ylabel('Rolling Covariance Batch')
-    plt.title('Covariance Matrix differences between datasets')
-    plt.legend(title='Tested Dataset', bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.ylabel('Rolling Mean Covariance - Task Mean')
+    plt.title('Covariance Matrix Differences')
+    plt.legend(title='Tested Dataset', loc='center', bbox_to_anchor=(0.5, -0.3), ncol=3, fancybox=True, shadow=True)
 
     # Show the plot
     plt.tight_layout()
@@ -1161,6 +1178,152 @@ def plot_learning_inference(results_template, df_changes, task_dict):
                 #f"Context: {data_new_task['Active Context'].values[0]}",
                 contexts_found_template[i],
                 fontsize=13,
+                color=color_map[int(contexts_found_template[i][-1])],
+                ha='center'
+                )
+        
+        # Scatter plot for change detection and losses
+        if key in df_changes.Dataset.unique():
+            changes_dataset = df_changes[df_changes.Dataset == key]   
+
+        
+            if len(changes_dataset.Task.unique()) > 0:
+                task = int(changes_dataset.Task.unique())
+                for new_task in changes_dataset.new_tested_context.unique():
+                    data_new_task = changes_dataset[changes_dataset.new_tested_context == new_task].reset_index()
+                    if key == dataset_legend:
+                        
+                        plt.scatter(
+                            #(data_new_task.prev_active_context + 1) * 15, 
+                            start_epoch,
+                            data_new_task['new_loss'], 
+                            
+                            color=color_map[new_task], 
+                            #label=f'New Loss Task {new_task}', 
+                            marker='o'
+                        )
+                    else:
+                    
+                        plt.scatter(
+                            #(data_new_task.prev_active_context + 1) * 15, 
+                            start_epoch,
+                            data_new_task['new_loss'][0], 
+                            
+                            color=color_map[new_task], 
+                            #label=f'New Loss Task {new_task}', 
+                            marker='o'
+                        )
+
+                    plt.scatter(
+                        start_epoch,
+                        #(data_new_task.prev_active_context + 1) * 15, 
+                        data_new_task['new_mean_loss'][0], 
+                        color=color_map[new_task], 
+                        
+                        #label=f'Mean Loss Task {new_task}', 
+                        marker='x'
+                    )
+                    
+        start_epoch = end_epoch
+
+    # Get the current legend handles and labels
+    handles, labels = plt.gca().get_legend_handles_labels()
+    # Create a proxy artist for the legend
+    from matplotlib.lines import Line2D
+
+
+    legend_elements = [
+        Line2D([0], [0], color='black', marker='x', linestyle='None', label='Mean Loss Task'),
+        Line2D([0], [0], color='black', marker='o', linestyle='None', label='Batch Loss Task'),
+        Line2D([0], [0], color='black', marker='*', linestyle='None', label='Inferred Task Context')
+    ]
+
+    # Combine existing handles and labels with the proxy artist
+    handles.extend(legend_elements)
+    labels.extend(['Mean Loss Task', 'Batch Loss Task', 'Inferred Task'])
+
+
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.title('Training Losses and Task Change Detection')
+    plt.legend(handles=handles, labels=labels, loc='center', bbox_to_anchor=(0.5, -0.3), ncol=3, fancybox=True, shadow=True)
+
+
+    plt.show()
+
+
+def plot_learning_inference_real_data(results_template, df_changes, task_dict):
+
+    plt.figure(figsize=[16, 7])
+
+    set_plot_style()
+
+    custom_palette = [
+        '#5F9EA0',  # cadet blue
+        #'#DA70D6',  # orchid
+        # '#FFD700',  # gold
+        '#FFA07A',  # light salmon
+        #'#87CEEB',  # light blue
+        '#9370DB',  # medium purple
+        '#98FB98',  # pale green
+        '#FF7F50',  # coral
+        '#FF69B4',  # hot pink
+        '#20B2AA',  # light sea green
+        '#FF6347',  # tomato
+        '#4682B4',  # steel blue
+        '#DA70D6',  # orchid
+        '#32CD32'   # lime green
+    ]
+
+    # Plot the training losses for each task
+    task_data_keys = list(results_template.keys())
+    unique_tasks = range(len(task_data_keys))
+    #colors = sns.color_palette("hsv", len(unique_tasks))
+    color_map = {task: custom_palette[i] for i, task in enumerate(unique_tasks)}
+
+    highest_tested_task = np.max(df_changes.new_tested_context.unique())
+    dataset_legend = df_changes.loc[df_changes.new_tested_context == highest_tested_task]['Dataset'].values
+    if len(dataset_legend) > 1:
+        dataset_legend = dataset_legend[-1]
+
+    contexts_found_template = ['*Task 0', '*Task 0', '*Task 1', '*Task 1', 
+                    '*Task 2', '*Task 2', '*Task 2', '*Task 1',
+                     '*Task 2']
+
+    training_sets = ['Baseline1', 'Force1', 'Washout1']
+
+
+
+    start_epoch = 0
+    for i, key in enumerate(task_data_keys):
+        task = task_dict[key]
+        if i < len(task_data_keys):
+            start_epoch = start_epoch
+            line_style = '-' if key in training_sets else '--'
+            end_epoch = start_epoch + len(results_template[key]['hnet_train_losses'])
+            plt.plot(
+                np.arange(start_epoch, end_epoch), 
+                results_template[key]['hnet_train_losses'], 
+                label=key,
+                color= color_map[task] , #color_map[task]
+                linestyle=line_style, 
+                linewidth=2  # Set the desired line width here
+            )
+
+            plt.plot(
+                np.arange(start_epoch, end_epoch), 
+                results_template[key]['hnet_val_losses'], 
+                color=color_map[task],
+                alpha = 0.5,
+                linestyle=line_style,
+                linewidth=2
+            )
+            plt.text(
+                start_epoch+3, 
+                10,
+                #f"Context: {data_new_task['Active Context'].values[0]}",
+                contexts_found_template[i],
+                fontsize=16,
                 color=color_map[int(contexts_found_template[i][-1])],
                 ha='center'
                 )

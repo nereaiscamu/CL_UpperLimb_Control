@@ -5127,6 +5127,7 @@
         "beta_hnet_reg" : 0.1,
         "thrs" : 0.8
     }
+    
     ,
 
     {
@@ -5154,6 +5155,7 @@
         "beta_hnet_reg" : 0.1,
         "thrs" : 0.8
     }
+
     , 
 
     {
@@ -5181,6 +5183,7 @@
         "beta_hnet_reg" : 0.1,
         "thrs" : 0.8
     }
+
     , 
 
     {
@@ -5208,6 +5211,7 @@
         "beta_hnet_reg" : 0.1,
         "thrs" : 0.8
     }    
+
     , 
 
     {
@@ -5235,6 +5239,7 @@
         "beta_hnet_reg" : 0.1,
         "thrs" : 0.8
     }
+
     , 
 
     {
@@ -5262,6 +5267,7 @@
         "beta_hnet_reg" : 0.1,
         "thrs" : 0.8
     }
+
     , 
 
     {
@@ -5289,6 +5295,7 @@
         "beta_hnet_reg" : 0.1,
         "thrs" : 0.8
     }
+
     , 
 
     {
@@ -5400,6 +5407,7 @@
         "beta_hnet_reg" : 0.1,
         "thrs" : 0.8
     }
+
     , 
 
     {
@@ -5427,6 +5435,7 @@
         "beta_hnet_reg" : 0.1,
         "thrs" : 0.8
     }
+
     , 
 
     {
@@ -5454,6 +5463,7 @@
         "beta_hnet_reg" : 0.1,
         "thrs" : 0.8
     }
+
     ,
 
     {
@@ -5500,7 +5510,7 @@
         "num_layers": 1,
         "dropout":  0.2,
         "hidden_layers_hnet":[25,25],
-        "embedding_size":24,
+        "embedding_size":12,
         "lr_gamma": 1.37,
         "lr_step_size" : 10, 
         "seq_length_LSTM" : 19, 
@@ -5510,6 +5520,145 @@
         "thrs" : 0.8
     }
 
+    ,
+
+    {
+        "experiment_name": "Experiment1_Stimulation_v2", 
+        "_comment": "number 213, Same just changing the task order.",
+        "data": "Real_Data_Stimulation_v2",
+        "num_trials": -1, 
+        "fold" : 0, 
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[25,25],
+        "embedding_size":12,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 15,
+        "batch_size_val" : 15,
+        "beta_hnet_reg" : 10000,
+        "thrs" : 0.8
+    }
+
+    ,
+
+    {
+        "experiment_name": "Experiment1_Stimulation_v3", 
+        "_comment": "number 214, Using more trials for the first trained task.",
+        "data": "Real_Data_Stimulation_v3",
+        "num_trials": -1, 
+        "fold" : 0, 
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[25,25],
+        "embedding_size":12,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 25,
+        "batch_size_val" : 25,
+        "beta_hnet_reg" : 10000,
+        "thrs" : 0.8
+    }
+
+    , 
+
+    {
+        "experiment_name": "Experiment1_Adaptation_v1", 
+        "_comment": "number 215, Same as 211 but changing the order of the tasks.",
+        "data": "Real_Data_Adaptation_v1",
+        "num_trials": -1, 
+        "fold" : 0, 
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[25,25],
+        "embedding_size":24,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 50,
+        "batch_size_val" : 50,
+        "beta_hnet_reg" : 10000,
+        "thrs" : 0.8
+    }
+
+    ,
+
+    {
+        "experiment_name": "Experiment2_Adaptation", 
+        "_comment": "number 216, Task 3 with real neural data from adaptation set. Increasing the CL reg strength and decreasing the embedding size.",
+        "data": "Real_Data_Adaptation",
+        "num_trials": -1, 
+        "fold" : 0, 
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[25,25],
+        "embedding_size":12,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 50,
+        "batch_size_val" : 50,
+        "beta_hnet_reg" : 100000,
+        "thrs" : 0.8
+    }
+
+    ,
+
+    {
+        "experiment_name": "Experiment2_Adaptation_v2", 
+        "_comment": "number 217, Same as 216, changing task order.",
+        "data": "Real_Data_Adaptation_v2",
+        "num_trials": -1, 
+        "fold" : 0, 
+        "target_variable" : "vel",
+        "alpha_reg": 5e-4,
+        "l1_ratio_reg": 0.5,
+        "lr_detector": 0.0001,
+        "lr_hnet" : 0.00001,
+        "delta": 8,
+        "hidden_units": 300,
+        "num_layers": 1,
+        "dropout":  0.2,
+        "hidden_layers_hnet":[25,25],
+        "embedding_size":12,
+        "lr_gamma": 1.37,
+        "lr_step_size" : 10, 
+        "seq_length_LSTM" : 19, 
+        "batch_size_train" : 50,
+        "batch_size_val" : 50,
+        "beta_hnet_reg" : 100000,
+        "thrs" : 0.8
+    }
 ]
 
 
