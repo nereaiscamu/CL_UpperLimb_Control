@@ -1105,36 +1105,36 @@ def plot_perf_metric(df):
 
 
 
-    ########### 3- Checking task changes 
+########### 3- Checking task changes 
 
 
+from matplotlib.lines import Line2D
 
-def plot_learning_inference(results_template, df_changes, task_dict):
+def plot_learning_inference(results_template, df_changes, task_dict, 
+                            contexts_found_template, training_sets, 
+                            y_range, covariance_threshold=None, 
+                            additional_legend_elements=None):
 
     plt.figure(figsize=[16, 7])
-
     set_plot_style()
 
     custom_palette = [
         '#5F9EA0',  # cadet blue
         '#FFD700',  # gold
         '#FFA07A',  # light salmon
-        '#87CEEB',  # light blue
-        '#9370DB',  # medium purple
+        '#6495ED',  # Cornflower Blue
+        '#DA70D6',  # orchid
         '#98FB98',  # pale green
         '#FF7F50',  # coral
         '#FF69B4',  # hot pink
         '#20B2AA',  # light sea green
         '#FF6347',  # tomato
         '#4682B4',  # steel blue
-        '#DA70D6',  # orchid
         '#32CD32'   # lime green
     ]
 
-    # Plot the training losses for each task
     task_data_keys = list(results_template.keys())
     unique_tasks = range(len(task_data_keys))
-    #colors = sns.color_palette("hsv", len(unique_tasks))
     color_map = {task: custom_palette[i] for i, task in enumerate(unique_tasks)}
 
     highest_tested_task = np.max(df_changes.new_tested_context.unique())
@@ -1142,257 +1142,91 @@ def plot_learning_inference(results_template, df_changes, task_dict):
     if len(dataset_legend) > 1:
         dataset_legend = dataset_legend[-1]
 
-    contexts_found_template = ['*Task 0', '*Task 1', '*Task 2', '*Task 1', 
-                    '*Task 0', '*Task 3', '*Task 3', '*Task 4',
-                    '*Task 4', '*Task 2']
-
-    training_sets = ['Data_0_1', 'Data_4_1', 'Data_3_1', 'Data_1_1', 'Data_2_1']
-
-
-
     start_epoch = 0
     for i, key in enumerate(task_data_keys):
         task = task_dict[key]
-        if i < len(task_data_keys):
-            start_epoch = start_epoch
-            line_style = '-' if key in training_sets else '--'
-            end_epoch = start_epoch + len(results_template[key]['hnet_train_losses'])
-            plt.plot(
-                np.arange(start_epoch, end_epoch), 
-                results_template[key]['hnet_train_losses'], 
-                label=key,
-                color= color_map[task] , #color_map[task]
-                linestyle=line_style
-            )
+        line_style = '-' if key in training_sets else '--'
+        end_epoch = start_epoch + len(results_template[key]['hnet_train_losses'])
 
-            plt.plot(
-                np.arange(start_epoch, end_epoch), 
-                results_template[key]['hnet_val_losses'], 
-                color=color_map[task],
-                alpha = 0.5,
-                linestyle=line_style
-            )
-            plt.text(
-                start_epoch+3, 
-                13,
-                #f"Context: {data_new_task['Active Context'].values[0]}",
-                contexts_found_template[i],
-                fontsize=13,
-                color=color_map[int(contexts_found_template[i][-1])],
-                ha='center'
-                )
+        plt.plot(
+            np.arange(start_epoch, end_epoch), 
+            results_template[key]['hnet_train_losses'], 
+            label=key,
+            color=color_map[task],
+            linestyle=line_style, 
+            linewidth=2
+        )
+
+        plt.plot(
+            np.arange(start_epoch, end_epoch), 
+            results_template[key]['hnet_val_losses'], 
+            color=color_map[task],
+            alpha=0.5,
+            linestyle=line_style,
+            linewidth=2
+        )
+
+        plt.text(
+            start_epoch + 10 if 'start_epoch' in locals() else start_epoch + 3, 
+            -1,
+            contexts_found_template[i],
+            fontsize=14,
+            color=color_map[int(contexts_found_template[i][-1])],
+            ha='center'
+        )
         
-        # Scatter plot for change detection and losses
         if key in df_changes.Dataset.unique():
-            changes_dataset = df_changes[df_changes.Dataset == key]   
-
-        
+            changes_dataset = df_changes[df_changes.Dataset == key]
             if len(changes_dataset.Task.unique()) > 0:
                 task = int(changes_dataset.Task.unique())
                 for new_task in changes_dataset.new_tested_context.unique():
                     data_new_task = changes_dataset[changes_dataset.new_tested_context == new_task].reset_index()
-                    if key == dataset_legend:
-                        
-                        plt.scatter(
-                            #(data_new_task.prev_active_context + 1) * 15, 
-                            start_epoch,
-                            data_new_task['new_loss'], 
-                            
-                            color=color_map[new_task], 
-                            #label=f'New Loss Task {new_task}', 
-                            marker='o'
-                        )
-                    else:
+                    marker_key = ['new_loss', 'new_mean_loss', 'similarity_score']
+                    markers = ['o', 'x', '*']
                     
-                        plt.scatter(
-                            #(data_new_task.prev_active_context + 1) * 15, 
-                            start_epoch,
-                            data_new_task['new_loss'][0], 
-                            
-                            color=color_map[new_task], 
-                            #label=f'New Loss Task {new_task}', 
-                            marker='o'
-                        )
-
-                    plt.scatter(
-                        start_epoch,
-                        #(data_new_task.prev_active_context + 1) * 15, 
-                        data_new_task['new_mean_loss'][0], 
-                        color=color_map[new_task], 
-                        
-                        #label=f'Mean Loss Task {new_task}', 
-                        marker='x'
-                    )
+                    for j, m_key in enumerate(marker_key):
+                        if key == dataset_legend:
+                            plt.scatter(
+                                start_epoch,
+                                data_new_task[m_key], 
+                                color=color_map[new_task], 
+                                marker=markers[j]
+                            )
+                        else:
+                            plt.scatter(
+                                start_epoch,
+                                data_new_task[m_key][0], 
+                                color=color_map[new_task], 
+                                marker=markers[j]
+                            )
                     
         start_epoch = end_epoch
+        
+    if covariance_threshold:
+        plt.hlines(y=covariance_threshold, xmin=-0.5, xmax=start_epoch, color='r', linestyle='-.', alpha=0.3, label='Covariance Similarity Threshold')
 
-    # Get the current legend handles and labels
     handles, labels = plt.gca().get_legend_handles_labels()
-    # Create a proxy artist for the legend
-    from matplotlib.lines import Line2D
-
-
+    
     legend_elements = [
         Line2D([0], [0], color='black', marker='x', linestyle='None', label='Mean Loss Task'),
         Line2D([0], [0], color='black', marker='o', linestyle='None', label='Batch Loss Task'),
-        Line2D([0], [0], color='black', marker='*', linestyle='None', label='Inferred Task Context')
+        Line2D([0], [0], color='black', marker='*', linestyle='None', label='Covariance Difference'),
+        Line2D([0], [0], color='#5F9EA0', marker='s', linestyle='None', label='Training Loss'),
+        Line2D([0], [0], color='#5F9EA0', marker='s', linestyle='None', alpha=0.5, label='Validation Loss')
     ]
 
-    # Combine existing handles and labels with the proxy artist
-    handles.extend(legend_elements)
-    labels.extend(['Mean Loss Task', 'Batch Loss Task', 'Inferred Task'])
+    if additional_legend_elements:
+        legend_elements.extend(additional_legend_elements)
 
+    handles.extend(legend_elements)
+    labels.extend(['Mean Loss Task', 'Batch Loss Task', 'Covariance Difference', 'Training Loss', 'Validation Loss'])
 
     plt.xlabel('Epoch')
     plt.ylabel('Loss')
+    plt.ylim(y_range)
     plt.title('Training Losses and Task Change Detection')
-    plt.legend(handles=handles, labels=labels, loc='center', bbox_to_anchor=(0.5, -0.3), ncol=3, fancybox=True, shadow=True)
-
+    plt.legend(handles=handles, labels=labels, loc='center', bbox_to_anchor=(0.5, -0.3), ncol=4, fancybox=True, shadow=True)
 
     plt.show()
 
 
-def plot_learning_inference_real_data(results_template, df_changes, task_dict):
-
-    plt.figure(figsize=[16, 7])
-
-    set_plot_style()
-
-    custom_palette = [
-        '#5F9EA0',  # cadet blue
-        #'#DA70D6',  # orchid
-        # '#FFD700',  # gold
-        '#FFA07A',  # light salmon
-        #'#87CEEB',  # light blue
-        '#9370DB',  # medium purple
-        '#98FB98',  # pale green
-        '#FF7F50',  # coral
-        '#FF69B4',  # hot pink
-        '#20B2AA',  # light sea green
-        '#FF6347',  # tomato
-        '#4682B4',  # steel blue
-        '#DA70D6',  # orchid
-        '#32CD32'   # lime green
-    ]
-
-    # Plot the training losses for each task
-    task_data_keys = list(results_template.keys())
-    unique_tasks = range(len(task_data_keys))
-    #colors = sns.color_palette("hsv", len(unique_tasks))
-    color_map = {task: custom_palette[i] for i, task in enumerate(unique_tasks)}
-
-    highest_tested_task = np.max(df_changes.new_tested_context.unique())
-    dataset_legend = df_changes.loc[df_changes.new_tested_context == highest_tested_task]['Dataset'].values
-    if len(dataset_legend) > 1:
-        dataset_legend = dataset_legend[-1]
-
-    contexts_found_template = ['*Task 0', '*Task 0', '*Task 1', '*Task 1', 
-                    '*Task 2', '*Task 2', '*Task 2', '*Task 1',
-                     '*Task 2']
-
-    training_sets = ['Baseline1', 'Force1', 'Washout1']
-
-
-
-    start_epoch = 0
-    for i, key in enumerate(task_data_keys):
-        task = task_dict[key]
-        if i < len(task_data_keys):
-            start_epoch = start_epoch
-            line_style = '-' if key in training_sets else '--'
-            end_epoch = start_epoch + len(results_template[key]['hnet_train_losses'])
-            plt.plot(
-                np.arange(start_epoch, end_epoch), 
-                results_template[key]['hnet_train_losses'], 
-                label=key,
-                color= color_map[task] , #color_map[task]
-                linestyle=line_style, 
-                linewidth=2  # Set the desired line width here
-            )
-
-            plt.plot(
-                np.arange(start_epoch, end_epoch), 
-                results_template[key]['hnet_val_losses'], 
-                color=color_map[task],
-                alpha = 0.5,
-                linestyle=line_style,
-                linewidth=2
-            )
-            plt.text(
-                start_epoch+3, 
-                10,
-                #f"Context: {data_new_task['Active Context'].values[0]}",
-                contexts_found_template[i],
-                fontsize=16,
-                color=color_map[int(contexts_found_template[i][-1])],
-                ha='center'
-                )
-        
-        # Scatter plot for change detection and losses
-        if key in df_changes.Dataset.unique():
-            changes_dataset = df_changes[df_changes.Dataset == key]   
-
-        
-            if len(changes_dataset.Task.unique()) > 0:
-                task = int(changes_dataset.Task.unique())
-                for new_task in changes_dataset.new_tested_context.unique():
-                    data_new_task = changes_dataset[changes_dataset.new_tested_context == new_task].reset_index()
-                    if key == dataset_legend:
-                        
-                        plt.scatter(
-                            #(data_new_task.prev_active_context + 1) * 15, 
-                            start_epoch,
-                            data_new_task['new_loss'], 
-                            
-                            color=color_map[new_task], 
-                            #label=f'New Loss Task {new_task}', 
-                            marker='o'
-                        )
-                    else:
-                    
-                        plt.scatter(
-                            #(data_new_task.prev_active_context + 1) * 15, 
-                            start_epoch,
-                            data_new_task['new_loss'][0], 
-                            
-                            color=color_map[new_task], 
-                            #label=f'New Loss Task {new_task}', 
-                            marker='o'
-                        )
-
-                    plt.scatter(
-                        start_epoch,
-                        #(data_new_task.prev_active_context + 1) * 15, 
-                        data_new_task['new_mean_loss'][0], 
-                        color=color_map[new_task], 
-                        
-                        #label=f'Mean Loss Task {new_task}', 
-                        marker='x'
-                    )
-                    
-        start_epoch = end_epoch
-
-    # Get the current legend handles and labels
-    handles, labels = plt.gca().get_legend_handles_labels()
-    # Create a proxy artist for the legend
-    from matplotlib.lines import Line2D
-
-
-    legend_elements = [
-        Line2D([0], [0], color='black', marker='x', linestyle='None', label='Mean Loss Task'),
-        Line2D([0], [0], color='black', marker='o', linestyle='None', label='Batch Loss Task'),
-        Line2D([0], [0], color='black', marker='*', linestyle='None', label='Inferred Task Context')
-    ]
-
-    # Combine existing handles and labels with the proxy artist
-    handles.extend(legend_elements)
-    labels.extend(['Mean Loss Task', 'Batch Loss Task', 'Inferred Task'])
-
-
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
-    plt.title('Training Losses and Task Change Detection')
-    plt.legend(handles=handles, labels=labels, loc='center', bbox_to_anchor=(0.5, -0.3), ncol=3, fancybox=True, shadow=True)
-
-
-    plt.show()

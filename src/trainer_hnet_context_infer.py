@@ -105,7 +105,7 @@ class ContinualLearningTrainer:
         return sum(covariances) / len(covariances)
     
     
-    def is_similar_to_previous_tasks(self, current_covariance, t= 0.04): # final version 5):
+    def is_similar_to_previous_tasks(self, current_covariance, t= 5): # for neural data 0.04 ):
         """Determine if the current task is similar to any previously learned task."""
         similar_tasks = []  # List to store tuples of (index, similarity_score) for similar tasks
 
@@ -318,6 +318,7 @@ class ContinualLearningTrainer:
                                         new_context.append(context)
                                         new_min_loss.append(m.detach().cpu().numpy())
                                         new_mean_loss.append(thrs_context * torch.mean(self.context_error[context][-1000:-1]).detach().cpu().numpy())  # Stimulation data [-100:-1]
+
 
                                         # Calculate similarity score
                                         diff = torch.abs(rolling_mean_covariance - self.task_covariances[context])
