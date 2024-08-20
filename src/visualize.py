@@ -48,9 +48,10 @@ def visualize_traj(df, pos_vars, marker_names):
     for i, pos_var in enumerate(pos_vars):
         for j, marker in enumerate(marker_names):
             ax = axes[i, j]
-            ax.set_title(f'{pos_var.upper()} vs Time for Marker {marker}')
+            if i == 0:
+                ax.set_title(f'{marker}', fontsize = 18)
             if j == 0:
-                ax.set_ylabel('Position (cm)')
+                ax.set_ylabel(f'{pos_var.upper()} Position (mm)', fontsize = 18)
             
             mean_trajectories = []  # Initialize list to store mean trajectories
             
@@ -80,7 +81,8 @@ def visualize_traj(df, pos_vars, marker_names):
             for k, mean_trajectory in enumerate(mean_trajectories):
                 ax.plot(time, mean_trajectory, color=f'C{k}', linestyle='--', label=f'Mean Trajectory {k}')
             
-            ax.set_xlabel('Time (s)')
+            if i == 2:
+                ax.set_xlabel('Time (s)', fontsize = 18)
             
     # Create a single legend outside the subplots
     legend_handles = [plt.Line2D([0], [0], color=color, lw=2, label=label) for color, label in zip(legend_colors, legend_labels)]
@@ -88,11 +90,10 @@ def visualize_traj(df, pos_vars, marker_names):
     # Create a single legend for the entire figure at the bottom
     fig.legend(legend_handles, legend_labels + [f'Mean Trajectory {k}' for k in range(len(mean_trajectories))],
                 loc='lower center', ncol=len(legend_labels)+2, bbox_to_anchor=(0.5, -0.1), fontsize = 'xx-large')
-    plt.suptitle('X, Y and Z trajectories for baselie trials (no stimulation)', fontsize='24')
+    plt.suptitle('X, Y and Z trajectories for Baseline Trials', fontsize='24')
     plt.tight_layout()
 
     plt.show()
-
 
 def visualize_angles(df, var = 'angles', angle_names = ['Shoulder', 'Elbow', 'Wrist']):
     """ 

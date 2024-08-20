@@ -167,6 +167,7 @@ class Run_Experiment_Block3:
 
     def run(self):
         results_dict = {}
+        seen_sets = 0
         for s in self.datasets.keys():
             results_dict_subset = {}
             x_train, y_train, x_val, y_val, x_test, y_test = self.datasets[s]
@@ -193,7 +194,8 @@ class Run_Experiment_Block3:
             results_dict_subset['y_true_hnet'] = y_test
             results_dict_subset['y_pred_hnet'] = y_pred_test
             results_dict_subset['r2_test_hnet'] = r2_test
-            save_model(self.hnet, self.continual_trainer.active_context, path_hnet_models)
+            model_id = str(self.continual_trainer.active_context)+'_'+str(seen_sets)
+            save_model(self.hnet, model_id, path_hnet_models)
             results_dict_subset['hnet_train_losses'] = train_losses_
             results_dict_subset['hnet_val_losses'] = val_losses_
             elapsed_time = time.time() - start_time
@@ -209,6 +211,8 @@ class Run_Experiment_Block3:
             results_dict_subset['active_context'] = active_context
 
             results_dict[s] = results_dict_subset
+
+            seen_sets += 1
 
         return results_dict
          
@@ -296,6 +300,7 @@ def main(args):
         # Save the dictionary to a file usnig pickle
         with open(file_path, 'wb') as fp:
             pickle.dump(results_dict, fp)
+        
 
 
 if __name__ == "__main__":

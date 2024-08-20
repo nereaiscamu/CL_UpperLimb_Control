@@ -5661,8 +5661,8 @@
     }
     ,
     {
-        "experiment_name": "Experiment18_Task3_v1_new", 
-        "_comment": "number 218, Need to save covariance also.",
+        "experiment_name": "Experiment18_Task3_v1_all_models", 
+        "_comment": "number 218, saving models at each step.",
         "data": "Sim_Data_Experiment63_-1trials_v1",
         "num_trials": -1, 
         "fold" : 0,
