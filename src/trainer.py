@@ -155,7 +155,7 @@ def train_model(model, X,Y,
 
         # Update learning rate with the scheduler
         scheduler.step()
-        #print("Epoch {:03} Train {:.4f} Val {:.4f}".format(epoch, train_losses[-1], val_losses[-1]))
+        print("Epoch {:03} Train {:.4f} Val {:.4f}".format(epoch, train_losses[-1], val_losses[-1]))
 
     # load best model weights
     model.load_state_dict(best_model_wts)

@@ -231,7 +231,7 @@ def build_result_df(results, data, EWC = False):
 
     for set in results.keys():
         dataset.append(set)
-        if not EWC:
+        if not EWC :
             r2_test_detector.append(results[set]['r2_test_detector'])
         r2_test_hnet.append(results[set]['r2_test_hnet'])
         predicted_task.append(results[set]['predicted_task'])
@@ -364,8 +364,7 @@ def build_catas_forg_df(results, data, models, experiment_name, model_type = 'HN
                         'R2': r2_list})
     return df_plot
 
-import seaborn as sns
-import matplotlib.pyplot as plt
+
 
 def plot_catas_forg(df_plot):
     set_plot_style()
@@ -1224,7 +1223,7 @@ def plot_learning_inference(results_template, df_changes, task_dict,
     plt.xlabel('Epoch')
     plt.ylabel('Loss')
     plt.ylim(y_range)
-    plt.title('Training Losses and Task Change Detection')
+    #plt.title('Training Losses and Task Change Detection')
     plt.legend(handles=handles, labels=labels, loc='center', bbox_to_anchor=(0.5, -0.3), ncol=4, fancybox=True, shadow=True)
 
     plt.show()
