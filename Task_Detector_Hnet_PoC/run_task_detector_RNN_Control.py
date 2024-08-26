@@ -133,7 +133,7 @@ def run_experiment(experiment, datasets):
         results_dict_subset['hnet_val_losses'] = val_losses
         
         # Evaluate model on first seen data
-        y_hat, y_true,train_score, v_score, test_score = eval_model( x_train, y_train,
+        y_hat, y_true, train_score, v_score, test_score = eval_model( x_train, y_train,
                                                                     x_val, y_val,
                                                                     x_test, y_test, 
                                                                     model, 

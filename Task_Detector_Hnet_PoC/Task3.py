@@ -255,7 +255,7 @@ def main(args):
             # Now running experiment on the desired trial number
             print('Running experiment...')
             config = ExperimentConfig(experiment)
-            runner = Run_Experiment_Block3(config, device, sets, LSTM = True)
+            runner = Run_Experiment_Block3(config, device, sets, LSTM = True)#Change to true!
             results_dict = runner.run()
 
             path_to_results = os.path.join('.','Results')
@@ -290,7 +290,7 @@ def main(args):
         # Now running experiment on the desired trial number
         print('Running experiment...')
         config = ExperimentConfig(experiment)
-        runner = Run_Experiment_Block3(config, device, sets, LSTM = True)
+        runner = Run_Experiment_Block3(config, device, sets, LSTM = False) #Change to true!
         results_dict = runner.run()
 
         path_to_results = os.path.join('.','Results')
