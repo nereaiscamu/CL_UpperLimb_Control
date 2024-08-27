@@ -714,10 +714,10 @@ def calculate_fwt(accuracies_CL, accuracies_control):
     k = len(accuracies_control)
     fwt_sum = 0.0
     
-    for j in range(1, k):  # Start from 1 because we need j=2 to k
+    for j in range(k): 
         fwt_sum += accuracies_CL[j] - accuracies_control[j]
         
-    fwt = fwt_sum / (k - 1)
+    fwt = fwt_sum / (k)
     return fwt
 
 
@@ -1111,6 +1111,7 @@ from matplotlib.lines import Line2D
 
 def plot_learning_inference(results_template, df_changes, task_dict, 
                             contexts_found_template, training_sets, 
+                            data_names,
                             y_range, covariance_threshold=None, 
                             additional_legend_elements=None):
 
@@ -1131,7 +1132,8 @@ def plot_learning_inference(results_template, df_changes, task_dict,
         '#4682B4',  # steel blue
         '#32CD32'   # lime green
     ]
-
+  
+    
     task_data_keys = list(results_template.keys())
     unique_tasks = range(len(task_data_keys))
     color_map = {task: custom_palette[i] for i, task in enumerate(unique_tasks)}
@@ -1150,7 +1152,7 @@ def plot_learning_inference(results_template, df_changes, task_dict,
         plt.plot(
             np.arange(start_epoch, end_epoch), 
             results_template[key]['hnet_train_losses'], 
-            label=key,
+            label=data_names[key],
             color=color_map[task],
             linestyle=line_style, 
             linewidth=2
@@ -1202,7 +1204,7 @@ def plot_learning_inference(results_template, df_changes, task_dict,
         start_epoch = end_epoch
         
     if covariance_threshold:
-        plt.hlines(y=covariance_threshold, xmin=-0.5, xmax=start_epoch, color='r', linestyle='-.', alpha=0.3, label='Covariance Similarity Threshold')
+        plt.hlines(y=covariance_threshold, xmin=-0.5, xmax=start_epoch, color='k', linestyle='-.', alpha=0.5, label='Covariance Similarity Threshold')
 
     handles, labels = plt.gca().get_legend_handles_labels()
     
@@ -1220,12 +1222,13 @@ def plot_learning_inference(results_template, df_changes, task_dict,
     handles.extend(legend_elements)
     labels.extend(['Mean Loss Task', 'Batch Loss Task', 'Covariance Difference', 'Training Loss', 'Validation Loss'])
 
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
+    plt.xlabel('Epoch', fontsize = 20)
+    plt.ylabel('Loss', fontsize = 20)
     plt.ylim(y_range)
     #plt.title('Training Losses and Task Change Detection')
-    plt.legend(handles=handles, labels=labels, loc='center', bbox_to_anchor=(0.5, -0.3), ncol=4, fancybox=True, shadow=True)
-
+    #plt.legend(handles=handles, labels=labels, loc='center', bbox_to_anchor=(0.5, -0.3), ncol=4, fancybox=True, shadow=True)
+    plt.legend(handles=handles, labels=labels, loc='center', bbox_to_anchor=(0.5, -0.3), 
+           ncol=4, fancybox=True, shadow=True, fontsize=12)  # Adjust fontsize as needed
     plt.show()
 
 
