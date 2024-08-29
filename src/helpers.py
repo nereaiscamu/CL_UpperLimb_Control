@@ -1,22 +1,45 @@
+# ======================================================================
+# IMPORTS AND SETUP
+# ======================================================================
+
 import pandas as pd
 import numpy as np
 import xarray as xr
-
 import os
 from tqdm.auto import tqdm
-
 import matplotlib.pyplot as plt
 import seaborn as sns
-
 import random
 from sklearn.preprocessing import StandardScaler
-
 import sys
+from collections import Counter
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+from torch.optim import lr_scheduler
+from sklearn.metrics import *
+import math
 
+
+# Set device for PyTorch
+device = torch.device('cuda:0')
+
+# Add PyalData to the path for importing custom modules
 sys.path.append("/home/nerea/CL_UpperLimb_Control/PyalData")
 from pyaldata import *
+from Models.models import *
 
-from collections import Counter
+# Set random seed for reproducibility
+random.seed(42)
+
+
+# Define helper functions
+
+
+# ======================================================================
+# DATA PREPROCESSING FUNCTIONS
+# ======================================================================
 
 
 def clean_0d_array_fields_NC(df):
@@ -41,6 +64,9 @@ def clean_0d_array_fields_NC(df):
 
 
 def mat2dataframe_NC(fname, shift_idx_fields=True, td_name = 'td_name'):
+    """
+    Converts .mat file data into a pandas DataFrame, with optional shifting of index fields.
+    """
     try:
         mat = scipy.io.loadmat(fname, simplify_cells=True)
     except NotImplementedError:
@@ -75,8 +101,10 @@ def mat2dataframe_NC(fname, shift_idx_fields=True, td_name = 'td_name'):
     return df 
 
 
-#Auxiliar function to replace cells with [] by "None"
 def replace_empty_list(value):
+    """
+    Replaces empty lists or arrays with 0.
+    """
     return 0 if (
         (isinstance(value, list) and len(value) == 0) or
         (isinstance(value, np.ndarray) and value.size == 0)
@@ -169,7 +197,9 @@ def find_bad_indices(row):
     
     return bad_indices
 
-
+# ======================================================================
+# DATA SLICING AND TRANSFORMATION FUNCTIONS
+# ======================================================================
 
 def slice_between_points_NC(start_point, end_point, before, after):
     """
@@ -264,22 +294,8 @@ def build_tidy_df(df, start_margin = 5, end_margin = 10,ref_field = None, stim_p
     """
 
     time_fields = utils.get_time_varying_fields(df, ref_field)
-    win_df = pd.DataFrame(index=range(len(df)), columns=time_fields)  # Creating DataFrame with columns based on time_fields
+    win_df = split_time_fields(df, start_margin, end_margin, ref_field)
 
-    for it, row in df.iterrows():
-        idx_reach_values = row.idx_reach
-
-        for t in time_fields:
-            col = []
-            t_row_values = row[t]
-            for i, reach in enumerate(idx_reach_values):
-                start = int(reach - start_margin)
-                #end = int(idx_end_values[i] + end_margin)
-                end = start + 75 #changed on 27/03 to have all trials with same length, easier shape for the models.
-                data = t_row_values[start:end]
-                col.append(data)
-            
-            win_df.loc[it, t] = [col]
     if stim_params:
         cols_to_search = ['index', 'num', 'type', 'tonic_stim_params', 'KUKAPos']
     else: 
@@ -294,28 +310,16 @@ def build_tidy_df(df, start_margin = 5, end_margin = 10,ref_field = None, stim_p
     for trial_num, trial in enumerate(win_df[time_fields[0]]):
         for reach_num, reach in enumerate(trial[0]):
             for timestamp, values in enumerate(reach):
+                row = {
+                    'num': win_df['num'][trial_num],
+                    'type': win_df['type'][trial_num],
+                    'trial_num': trial_num,
+                    'reach_num': reach_num,
+                    'time_sample': timestamp,
+                    'x': values
+                }
                 if stim_params:
-                    row = {
-                        'num': win_df['num'][trial_num],
-                        'type': win_df['type'][trial_num],
-                        'stim_params': win_df['tonic_stim_params'][trial_num],
-                        #'KUKAPos': win_df['KUKAPos'][trial_num][reach_num], --> check if I need it, only in some data
-                        'trial_num': trial_num,
-                        'reach_num': reach_num,
-                        'time_sample': timestamp,
-                        'x' : values
-                    }
-
-                else:
-                    row = {
-                        'num': win_df['num'][trial_num],
-                        'type': win_df['type'][trial_num],
-                        #'KUKAPos': win_df['KUKAPos'][trial_num][reach_num], --> check if I need it, only in some data
-                        'trial_num': trial_num,
-                        'reach_num': reach_num,
-                        'time_sample': timestamp,
-                        'x' : values
-                    }
+                    row['stim_params'] = win_df['tonic_stim_params'][trial_num]
 
                 rows_0.append(row)
 
@@ -337,6 +341,33 @@ def build_tidy_df(df, start_margin = 5, end_margin = 10,ref_field = None, stim_p
     return df0
 
 
+# ======================================================================
+# OUTLIER HANDLING AND NORMALIZATION FUNCTIONS
+# ======================================================================
+
+def calculate_mode(data):
+    """
+    Calculate the mode of a dataset.
+
+    Args:
+    - data (list or numpy array): The input dataset.
+
+    Returns:
+    - mode: The mode(s) of the dataset.
+    """
+    # Use Counter to count occurrences of each value
+    data = np.round(data, 3)
+    counts = Counter(data)
+
+    # Get the maximum count
+    max_count = max(counts.values())
+
+    # Find all values with the maximum count (could be multiple modes)
+    modes = [value for value, count in counts.items() if count == max_count]
+
+    return modes
+
+
 def outliers_removal(data):
     """
     Description: Remove outliers from a data series represented as a list of lists.
@@ -352,25 +383,10 @@ def outliers_removal(data):
 
     # Convert data series to 2D NumPy array
     data = np.vstack(data)
-
     # Defining superior and inferior thresholds
     sup_thrs = np.median(data, axis = 0) + 3 * np.std(data, axis = 0)
     inf_thrs = np.median(data, axis = 0) - 3 * np.std(data, axis = 0)
-
-    # Initialize a new array to store adjusted data
-    new_data = np.zeros_like(data)
-
-    # Iterate over each column of the data
-    for i in range(data.shape[1]):
-        # Replace outliers above the superior threshold with the median value of the column
-        new_data[:,i] = np.where(data[:,i] > sup_thrs[i], sup_thrs[i], data[:,i])
-        #new_data[:,i] = np.where(data[:,i] > sup_thrs[i], np.median(data[:,i], axis = 0), data[:,i])
-        # Replace outliers below the inferior threshold with the median value of the column
-        new_data[:,i] = np.where(new_data[:,i]  < inf_thrs[i], inf_thrs[i], new_data[:,i])
-        #new_data[:,i] = np.where(new_data[:,i]  < inf_thrs[i], np.median(data[:,i], axis = 0), new_data[:,i])
-    
-    # Convert adjusted data back to list format
-    return new_data.tolist()
+    return np.clip(data, inf_thrs, sup_thrs).tolist()
 
 
 def min_max(vector):
@@ -399,6 +415,10 @@ def min_max_normalize(vector, mins, maxs):
         norm_vec[:,i] = (vector[:,i] - mins[i]) / (maxs[i] - mins[i])
 
     return norm_vec
+
+# ======================================================================
+# DATA SPLITTING FOR MODEL TRAINING
+# ======================================================================
 
 
 def train_test_split(df, train_variable = 'both_rates', 
@@ -432,16 +452,10 @@ def train_test_split(df, train_variable = 'both_rates',
     random.seed(42)
     
     trial_ids = np.unique(df['id'].values)
-    train_ids = [[] for _ in range(num_folds)] # generic to all folds
-    val_ids = [[] for _ in range(num_folds)]  # Create empty lists for each fold
-    test_ids = [[] for _ in range(num_folds)]  # Create empty lists for each fold
-
+    #create empty list for each fold
+    train_ids, val_ids, test_ids = [[] for _ in range(num_folds)], [[] for _ in range(num_folds)], [[] for _ in range(num_folds)]
     num_test = max(int(np.round(0.2*len(trial_ids))),1)  
     num_val = max(int(np.round(0.2*(len(trial_ids)-num_test))),1) 
-    print('Train trials', len(trial_ids)-(num_test + num_val))
-    print('Test trials ', num_test)
-    print('Val trials', num_val)
-    
         
     for i in range(num_folds):
         random.shuffle(trial_ids)
@@ -449,53 +463,28 @@ def train_test_split(df, train_variable = 'both_rates',
         remaining_ids = [j for j in trial_ids if j not in test_ids[i]]
         train_ids[i].extend(remaining_ids[:-num_val])
         val_ids[i].extend(remaining_ids[-num_val:])
+    
         
-    X_train = {}
-    y_train = {}
-    X_test = {}
-    y_test = {}
-    X_val = {}
-    y_val = {}
-    info_train = {}
-    info_val = {}
-    info_test = {}
-    list_mins = {}
-    list_maxs = {}
+    X_train, y_train, X_val, y_val, X_test, y_test, info_train, info_val, info_test = {}, {}, {}, {}, {}, {}, {}, {}, {}
+    list_mins, list_maxs = {}, {}
 
+    info_cols = [c for c in ['id','num', 'type','stim_params','KUKAPos', 'trial_num', 'reach_num'] if c in df.columns]
 
-    if stim_params:
-        cols_search = [ 'id','num', 'type','stim_params','KUKAPos', 'trial_num', 'reach_num']
-    else:
-        cols_search = [ 'id','num', 'type','KUKAPos', 'trial_num', 'reach_num']
-    info_cols = [c for c in cols_search if c in df.columns]
+    def prepare_split(ids, set = "Train"):
+        subset = df.loc[df['id'].isin(ids)]
+        info = subset[[col for col in ['id', 'num', 'type', 'stim_params', 'KUKAPos'] if col in subset.columns]]
+        X = np.stack(subset[train_variable], axis=0)
+        y = np.array(subset[target_variable].tolist())
+        if no_outliers is True and set != 'Test':
+            y = np.array(outliers_removal(y))
+        return X, y, info
 
     for fold_idx in range(num_folds):
-        #print('fold',fold_idx, ' train_ids ',train_ids[fold_idx])
-        #print('fold',fold_idx, ' val_ids ',val_ids[fold_idx])
-        #print('fold',fold_idx, ' test_ids ',test_ids[fold_idx])
-
-        df_train = df.loc[df['id'].isin(train_ids[fold_idx])]
-        df_val = df.loc[df['id'].isin(val_ids[fold_idx])]
-        df_test = df.loc[df['id'].isin(test_ids[fold_idx])]
-
-        train_info = df_train[info_cols]
-        X_train_ = np.stack(df_train[train_variable], axis = 0)
-        y_train_ = np.array(df_train[target_variable].tolist())
-        val_info = df_val[info_cols]
-        X_val_ =  np.stack(df_val[train_variable], axis = 0)
-        y_val_ =  np.array(df_val[target_variable].tolist())
-        test_info = df_test[info_cols]
-        X_test_ =  np.stack(df_test[train_variable], axis = 0)
-        y_test_ =  np.array(df_test[target_variable].tolist())
-
-        if no_outliers is True:
-            df_train['target_no_outliers'] = outliers_removal(df_train[target_variable])
-            y_train_ = np.array(df_train['target_no_outliers'].tolist())
-            df_val['target_no_outliers'] = outliers_removal(df_val[target_variable])
-            y_val_ = np.array(df_val['target_no_outliers'].tolist())
-
+        X_train_, y_train_, train_info = prepare_split(train_ids[fold_idx])
+        X_val_, y_val_, val_info = prepare_split(val_ids[fold_idx])
+        X_test_, y_test_, test_info = prepare_split(test_ids[fold_idx])
+        
         if std == True:
-
             scaler = StandardScaler().fit(X_train_)
             X_train_ = scaler.transform(X_train_)
             X_val_ = scaler.transform(X_val_)
@@ -504,8 +493,7 @@ def train_test_split(df, train_variable = 'both_rates',
 
         X_train['fold'+str(fold_idx)] = X_train_
         #use training data to compute min and max values
-        mins, maxs = min_max(y_train_)
-        # apply min-max normalization with those values for training and val
+        mins, maxs = min_max(y_train_) # Not used.
         y_train['fold'+str(fold_idx)] = y_train_ #min_max_normalize(y_train_, mins, maxs)
         X_val['fold'+str(fold_idx)] = X_val_
         y_val['fold'+str(fold_idx)] = y_val_ #min_max_normalize(y_val_, mins, maxs)
@@ -520,91 +508,58 @@ def train_test_split(df, train_variable = 'both_rates',
     return X_train, y_train, X_val, y_val, X_test, y_test, info_train, info_val, info_test, list_mins, list_maxs
 
 
-
-
-def calculate_mode(data):
+def get_dataset(data, fold, target_variable='target_pos', no_outliers=False, force_data=False, std=True):
     """
-    Calculate the mode of a dataset.
-
+    Splits the data into train, validation, and test sets, then reshapes them for model training.
+    
     Args:
-    - data (list or numpy array): The input dataset.
+    - data: The entire dataset.
+    - fold: The specific fold to use for splitting.
+    - target_variable: The target variable to predict (default is 'target_pos').
+    - no_outliers: Boolean indicating whether to remove outliers.
+    - force_data: Boolean indicating if the data is related to force experiments.
+    - std: Boolean indicating whether to standardize the features.
 
     Returns:
-    - mode: The mode(s) of the dataset.
+    - Reshaped train, validation, and test sets for both features and target variables.
+    - Additional information (info_train, info_val, info_test) and normalization parameters (list_mins, list_maxs).
     """
-    # Use Counter to count occurrences of each value
-    data = np.round(data, 3)
-    counts = Counter(data)
+    X_train, y_train, X_val, y_val, X_test, y_test, info_train, info_val, info_test, list_mins, list_maxs = train_test_split(
+        data, 
+        train_variable='both_rates', 
+        target_variable=target_variable, 
+        num_folds=5, 
+        no_outliers=no_outliers, 
+        std=std
+    )
+    
+    # Get the specific fold
+    fold_num = f'fold{fold}'
+    print(f'We are testing the optimization method on fold {fold}')
+    
+    # Extract the corresponding datasets for the specified fold
+    X_train, X_val, X_test = X_train[fold_num], X_val[fold_num], X_test[fold_num]
+    y_train, y_val, y_test = y_train[fold_num], y_val[fold_num], y_test[fold_num]
 
-    # Get the maximum count
-    max_count = max(counts.values())
+    # Define the sequence length
+    seq_length = 100 if force_data else 75
+    
+    # Reshape data to fit the model's expected input format
+    xx_train = X_train.reshape(X_train.shape[0] // seq_length, seq_length, X_train.shape[1])
+    yy_train = y_train.reshape(y_train.shape[0] // seq_length, seq_length, y_train.shape[1])
+    
+    xx_val = X_val.reshape(X_val.shape[0] // seq_length, seq_length, X_val.shape[1])
+    yy_val = y_val.reshape(y_val.shape[0] // seq_length, seq_length, y_val.shape[1])
+    
+    xx_test = X_test.reshape(X_test.shape[0] // seq_length, seq_length, X_test.shape[1])
+    yy_test = y_test.reshape(y_test.shape[0] // seq_length, seq_length, y_test.shape[1])
 
-    # Find all values with the maximum count (could be multiple modes)
-    modes = [value for value, count in counts.items() if count == max_count]
-
-    return modes
-
-
-
-
-def get_dataset(data, fold, target_variable = 'target_pos',  no_outliers = False, force_data = False, std = True):
-
-
-    X_train, y_train, X_val,\
-          y_val, X_test, y_test,\
-              info_train, info_val,\
-                  info_test, list_mins,\
-                      list_maxs = train_test_split(data, 
-                                                train_variable = 'both_rates', 
-                                                target_variable = target_variable, 
-                                                num_folds = 5, 
-                                                no_outliers = no_outliers, 
-                                                std = std)
-    # Test one of the folds first
-    fold_num = 'fold{}'.format(fold)
-    fold = fold
-
-    print('We are testing the optimization method on fold ', fold)
-
-    X_train = X_train[fold_num]
-    X_val = X_val[fold_num]
-    X_test = X_test[fold_num]
-    y_test = y_test[fold_num]
-    y_train = y_train[fold_num]
-    y_val = y_val[fold_num]
-
-    seq_length = 75
-    if force_data == True:
-        seq_length = 100
-
-    # Reshape x_train to match the number of columns in the model's input layer
-    xx_train = X_train.reshape(X_train.shape[0] // seq_length, seq_length, X_train.shape[1])  
-    # Reshape y_train to match the number of neurons in the model's output layer
-    yy_train = y_train.reshape(y_train.shape[0] // seq_length, seq_length, y_train.shape[1])  
-
-    xx_val = X_val.reshape(X_val.shape[0] // seq_length, seq_length, X_val.shape[1])  
-    yy_val = y_val.reshape(y_val.shape[0] // seq_length, seq_length, y_val.shape[1])  
-
-    xx_test = X_test.reshape(X_test.shape[0] // seq_length, seq_length, X_test.shape[1])  
-    yy_test = y_test.reshape(y_test.shape[0] // seq_length, seq_length, y_test.shape[1])  
-
-    return xx_train, yy_train, xx_val, yy_val, xx_test, yy_test, info_train, info_val, info_test,  list_mins, list_maxs
+    return xx_train, yy_train, xx_val, yy_val, xx_test, yy_test, info_train, info_val, info_test, list_mins, list_maxs
 
 
-
-###########################################################
-########### Helpers for Deep Learning 
-###########################################################
-
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
-from torch.optim import lr_scheduler
-from sklearn.metrics import *
-device = torch.device('cuda:0') #suposed to be cuda
-from Models.models import *
-
+# ======================================================================
+# DEEP LEARNING MODEL UTILITIES
+# ======================================================================
 
 
 def weight_reset(m):

@@ -183,7 +183,8 @@ def run_experiment(experiment, datasets):
                             batch_size_val = batch_size_val,
                             num_epochs=1000, 
                             delta = delta,                 
-                            regularizer= Regularizer_RNN, 
+                            regularizer= regularizer, 
+                            layer_type = 'rnn',
                             l1_ratio = l1_ratio_reg,
                             alpha = alpha_reg,     
                             early_stop = 5)
@@ -309,7 +310,8 @@ def run_experiment(experiment, datasets):
                                 batch_size_val = batch_size_val,
                                 num_epochs=1000, 
                                 delta = delta,                 
-                                regularizer= Regularizer_RNN, 
+                                regularizer= regularizer, 
+                                layer_type = 'rnn',
                                 l1_ratio = l1_ratio_reg,
                                 alpha = alpha_reg,     
                                 early_stop = 5)

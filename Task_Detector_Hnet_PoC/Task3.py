@@ -225,7 +225,8 @@ def main(args):
     # Load the list of experiments from JSON
     with open(os.path.join('config.json'), 'r') as f:
         experiments = json.load(f)
-
+    LSTM_mode = True
+    
     if index == -1:
         for exp in range(160,172): 
             experiment = experiments[exp]
@@ -255,7 +256,7 @@ def main(args):
             # Now running experiment on the desired trial number
             print('Running experiment...')
             config = ExperimentConfig(experiment)
-            runner = Run_Experiment_Block3(config, device, sets, LSTM = True)#Change to true!
+            runner = Run_Experiment_Block3(config, device, sets, LSTM = LSTM_mode)#Change to true!
             results_dict = runner.run()
 
             path_to_results = os.path.join('.','Results')
@@ -290,7 +291,7 @@ def main(args):
         # Now running experiment on the desired trial number
         print('Running experiment...')
         config = ExperimentConfig(experiment)
-        runner = Run_Experiment_Block3(config, device, sets, LSTM = False) #Change to true!
+        runner = Run_Experiment_Block3(config, device, sets, LSTM = LSTM_mode) #Change to true!
         results_dict = runner.run()
 
         path_to_results = os.path.join('.','Results')

@@ -13,7 +13,9 @@ import sys
 sys.path.append("c:\\Users\\nerea\\OneDrive\\Documentos\\EPFL_MASTER\\PDM\\Project\\PyalData")
 from pyaldata import *
 
-
+# ==========================================================
+# FUNCTIONS FOR VISUALIZING TRAJECTORIES AND ANGLES
+# ==========================================================
 
 def visualize_traj(df, pos_vars, marker_names):
     """ 
@@ -169,6 +171,10 @@ def visualize_angles(df, var = 'angles', angle_names = ['Shoulder', 'Elbow', 'Wr
 
     plt.show()
 
+# ==========================================================
+# FUNCTION TO PLOT TRAINING AND VALIDATION LOSSES
+# ==========================================================
+
 def plot_losses(train_losses, val_losses):
     """
     Plot training and validation losses over epochs.
@@ -188,8 +194,23 @@ def plot_losses(train_losses, val_losses):
     plt.grid(True)
     plt.show()
 
+# ==========================================================
+# FUNCTIONS FOR VISUALIZING MODEL PREDICTIONS
+# ==========================================================
 
 def visualize_LSTM(y_hat, y_true, seq_length):
+
+    """
+    Visualize LSTM model predictions versus true values for x and y positions.
+
+    Inputs:
+        - y_hat: Predicted values from the LSTM model
+        - y_true: True values to compare against
+        - seq_length: Length of the sequence used in LSTM
+
+    Returns:
+        - A set of plots comparing predicted and true values for several trials
+    """
 
     y_hat = y_hat.reshape(y_hat.shape[0] // seq_length, seq_length, y_hat.shape[1])  
     y_true = y_true.reshape(y_true.shape[0] // seq_length, seq_length, y_true.shape[1])  
@@ -243,9 +264,23 @@ def visualize_LSTM(y_hat, y_true, seq_length):
     # Show the plot
     plt.show()
 
+
+
 def visualize_all_models(y_hat1, y_true1, y_hat2,
                         y_hat3, seq_length):
+    """
+    Visualize model predictions from multiple models (e.g., RNN, LSTM, Linear) versus true values for x and y velocities.
 
+    Inputs:
+        - y_hat1: Predicted values from the first model (e.g., RNN)
+        - y_true1: True values to compare against
+        - y_hat2: Predicted values from the second model (e.g., LSTM)
+        - y_hat3: Predicted values from the third model (e.g., Linear)
+        - seq_length: Length of the sequence used in the models
+
+    Returns:
+        - A set of plots comparing predicted and true values for multiple models across several trials
+    """
     y_hat1 = y_hat1.reshape(y_hat1.shape[0] // seq_length, seq_length, y_hat1.shape[1])  
     y_true1 = y_true1.reshape(y_true1.shape[0] // seq_length, seq_length, y_true1.shape[1])  
     y_hat2 = y_hat2.reshape(y_hat2.shape[0] // seq_length, seq_length, y_hat2.shape[1])      

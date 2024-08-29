@@ -4,58 +4,38 @@ import torch.nn.functional as F
 from hypnettorch.hnets import HyperNetInterface
 
 
-def Regularizer_LSTM(model, alpha=1e-5, l1_ratio=0.5):
+def regularizer(model, alpha=1e-5, l1_ratio=0.5, layer_type='lstm'):
     """
     Implement an L1-L2 penalty on the norm of the model weights.
-
-    model: CausalTemporalLSTM instance
-    alpha: scaling parameter for the regularization.
-    l1_ratio: mixing parameter between L1 and L2 loss.
-
+    
+    Args:
+    - model: The model instance (either LSTM or RNN).
+    - alpha: Scaling parameter for the regularization.
+    - l1_ratio: Mixing parameter between L1 and L2 loss.
+    - layer_type: The type of layer ('lstm' or 'rnn').
+    
     Returns:
-    reg: regularization term
+    - reg: The computed regularization term.
     """
-    w_t = model.lstm.weight_ih_l0
-    w_l_1 = model.linear.weight
-   
+    if layer_type == 'lstm':
+        weight = model.lstm.weight_ih_l0
+    elif layer_type == 'rnn':
+        weight = model.rnn.weight_ih_l0
+    
+    linear_weight = model.linear.weight
 
-    l1_loss = w_t.abs().sum() + w_l_1.abs().sum()
-    l2_loss = w_t.pow(2.0).sum() + w_l_1.pow(2.0).sum() 
+    l1_loss = weight.abs().sum() + linear_weight.abs().sum()
+    l2_loss = weight.pow(2.0).sum() + linear_weight.pow(2.0).sum()
 
-    reg = l1_ratio * l1_loss + (1 - l1_ratio) * l2_loss
-
-    reg = alpha * reg
-
+    reg = alpha * (l1_ratio * l1_loss + (1 - l1_ratio) * l2_loss)
+    
     return reg
 
 
-def Regularizer_RNN(model, alpha=1e-5, l1_ratio=0.5):
-    """
-    Implement an L1-L2 penalty on the norm of the model weights.
 
-    model: CausalTemporalLSTM instance
-    alpha: scaling parameter for the regularization.
-    l1_ratio: mixing parameter between L1 and L2 loss.
-
-    Returns:
-    reg: regularization term
-    """
-    w_t = model.rnn.weight_ih_l0
-    w_l = model.linear.weight
- 
-
-    l1_loss = w_t.abs().sum() + w_l.abs().sum() 
-    l2_loss = w_t.pow(2.0).sum() + w_l.pow(2.0).sum() 
-
-    reg = l1_ratio * l1_loss + (1 - l1_ratio) * l2_loss
-
-    reg = alpha * reg
-
-    return reg #.item()
-
-###############################################################
-### Regularization function for hypernetworks:
-###############################################################
+# ======================================================================
+# Regularization function for hypernetworks
+# ======================================================================
 
 ##### Regularization for the current task
 def reg_hnet(weights, alpha, l1_ratio):
@@ -124,11 +104,28 @@ def reg_hnet_allweights(weights, alpha, l1_ratio):
 
 
 
-
-
-###############################3
 #######################################
-# Anirudh's Function to get the weights generated with the model using previous conditions
+
+# ======================================================================
+# Adapted from: utils/hnet_regularizer.py
+# Original Author: Christian Henning
+# Original License: Apache License, Version 2.0
+# Original Source: https://github.com/ethz-asl/hypernetworks/blob/master/utils/hnet_regularizer.py
+#
+# This code has been adapted for our use case. The original purpose was to
+# implement regularization functions that ensure the output of a hypernetwork 
+# does not change after learning new tasks. These functions are used to 
+# compute regularization terms that penalize changes in the hypernetwork's 
+# output for previously learned tasks, thus helping to mitigate catastrophic 
+# forgetting in continual learning settings.
+# 
+# Changes made:
+# - The functions having "NC" --> I changed so that I can keep 
+# training on past tasks and still regularize using all task ids (inferior and superior to the current task)
+# ======================================================================
+
+
+# Function to get the weights for all conditions with the previous model
 def get_current_targets(task_id, hnet):
     r"""For all :math:`j < \text{task\_id}`, compute the output of the
     hypernetwork. This output will be detached from the graph before being added
@@ -173,7 +170,7 @@ def get_current_targets(task_id, hnet):
 
     return ret
 
-# Anirudh's Function to get the regularization term which depends on the previous tasks.
+# Function to get the regularization term which depends on the previous tasks.
 def calc_fix_target_reg(
     hnet,
     task_id,
@@ -334,8 +331,7 @@ def calc_fix_target_reg(
 
     return reg / num_regs
 
-#########################################################################################
-#########################################################################################
+
 ########### Regularizer for continual learning modified to be able to keep training on a previously learned task. 
 
 

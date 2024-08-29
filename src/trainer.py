@@ -34,6 +34,7 @@ def train_model(model, X,Y,
                 num_epochs=1000, 
                 delta = 8,                 
                 regularizer=None,
+                layer_type='rnn',
                 l1_ratio = 0.5,
                 alpha = 1e-5,     
                 early_stop = 5,
@@ -103,7 +104,7 @@ def train_model(model, X,Y,
                         
                         # Add regularization to the loss in the training phase
                         if regularizer is not None:
-                            loss_t_r = loss_t + regularizer(model, l1_ratio, alpha)
+                            loss_t_r = loss_t + regularizer(model, l1_ratio, alpha, layer_type = layer_type)
                         
                         else:
                             loss_t_r = loss_t
@@ -370,6 +371,7 @@ def train_model_EWC(model, X,Y,
                 num_epochs=1000, 
                 delta = 8,                 
                 regularizer=None,
+                layer_type = 'rnn',
                 l1_ratio = 0.5,
                 alpha = 1e-5,     
                 early_stop = 5,
@@ -444,7 +446,7 @@ def train_model_EWC(model, X,Y,
                         # Add regularization to the loss in the training phase
                         if regularizer is not None:
                             
-                             loss_t += regularizer(model, l1_ratio, alpha)
+                             loss_t += regularizer(model, l1_ratio, alpha, layer_type= layer_type)
                         # Compute gradients and perform an optimization step
                         loss_t.backward(retain_graph=True)
                         optimizer.step()
